@@ -25,5 +25,27 @@ public class MeterModel {
     }
 
     // JSON/CSV Export Methoden hier
+    public String exportAllCSV() {
+        StringBuilder sb = new StringBuilder();
+        for (MeterData meter : allMeters.values()) {
+            sb.append("Sensor: ").append(meter.getSensorId()).append("\n");
+            sb.append(meter.exportCSV()).append("\n");
+        }
+        return sb.toString();
+    }
+
+    public String exportAllJSON() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{");
+        boolean first = true;
+        for (Map.Entry<String, MeterData> entry : allMeters.entrySet()) {
+            if (!first) sb.append(",");
+            sb.append("\"").append(entry.getKey()).append("\":");
+            sb.append(entry.getValue().exportJSON());
+            first = false;
+        }
+        sb.append("}");
+        return sb.toString();
+    }
 }
 
