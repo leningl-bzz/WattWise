@@ -31,7 +31,7 @@ public class ESLParser {
                             double value = Double.parseDouble(valueStr);
                             obisValues.put(obis, value);
                         } catch (NumberFormatException e) {
-                            System.err.println("Fehlerhafte Zahl: " + valueStr);
+                            System.err.println("Invalid numeric value: " + valueStr);
                         }
                     }
                 }

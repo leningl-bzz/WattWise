@@ -1,8 +1,8 @@
 package ch.bzz.backend.runner;
 
-import ch.bzz.backend.model.Messwert;
+import ch.bzz.backend.model.Measurement;
 import ch.bzz.backend.parser.ESLParser;
-import ch.bzz.backend.parser.MesswertMerger;
+import ch.bzz.backend.parser.MeasurementMerger;
 import ch.bzz.backend.parser.SDATParser;
 
 import java.io.File;
@@ -14,31 +14,27 @@ public class ParserRunner {
 
     public static void main(String[] args) {
         try {
-            // === 1. ESL-Datei einlesen ===
-            File eslFile = new File("data/ESL.xml"); // Pfad anpassen!
-            Map<String, Double> eslWerte = ESLParser.parseESLFile(eslFile);
+            File eslFile = new File("data/ESL.xml");
+            File sdatFile = new File("data/SDAT.xml");
 
-            // === 2. SDAT-Datei einlesen ===
-            File sdatFile = new File("data/SDAT.xml"); // Pfad anpassen!
+            Map<String, Double> eslValues = ESLParser.parseESLFile(eslFile);
             SDATParser.ParsedSDAT parsed = SDATParser.parseSDATFile(sdatFile);
-            List<Messwert> sdatWerte = parsed.getWerte();
+            List<Measurement> sdatMeasurements = parsed.getValues();
             String documentId = parsed.getDocumentId();
 
-            // === 3. OBIS-Codes bestimmen anhand der DocumentID ===
             String obis1, obis2;
             if (documentId.contains("ID742")) {
-                obis1 = "1-1:1.8.1"; // Bezug HT
-                obis2 = "1-1:1.8.2"; // Bezug NT
+                obis1 = "1-1:1.8.1";
+                obis2 = "1-1:1.8.2";
             } else if (documentId.contains("ID735")) {
-                obis1 = "1-1:2.8.1"; // Einspeisung HT
-                obis2 = "1-1:2.8.2"; // Einspeisung NT
+                obis1 = "1-1:2.8.1";
+                obis2 = "1-1:2.8.2";
             } else {
-                System.out.println("Unbekannte DocumentID: " + documentId);
+                System.out.println("Unknown DocumentID: " + documentId);
                 return;
             }
 
-            // === 4. Verknüpfung & Ausgabe ===
-            List<Messwert> result = MesswertMerger.verknuepfenMitESL(sdatWerte, eslWerte, obis1, obis2);
+            List<Measurement> result = MeasurementMerger.mergeWithESL(sdatMeasurements, eslValues, obis1, obis2);
             result.forEach(System.out::println);
 
         } catch (Exception e) {

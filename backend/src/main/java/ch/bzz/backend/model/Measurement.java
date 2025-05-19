@@ -2,43 +2,39 @@ package ch.bzz.backend.model;
 
 import java.time.LocalDateTime;
 
-/* Einzelner Messwert */
 public class Measurement {
     private LocalDateTime timestamp;
-    private double relativeValue;
-    private Double absoluteValue;
+    private Double relative;
+    private Double absolute;
 
-    public Measurement(LocalDateTime timestamp, double relativeValue, Double absoluteValue) {
+    public Measurement(LocalDateTime timestamp, Double relative, Double absolute) {
         this.timestamp = timestamp;
-        this.relativeValue = relativeValue;
-        this.absoluteValue = absoluteValue;
+        this.relative = relative;
+        this.absolute = absolute;
     }
 
     public LocalDateTime getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(LocalDateTime timestamp) {
-        this.timestamp = timestamp;
+    public Double getRelative() {
+        return relative;
     }
 
-    public double getRelativeValue() {
-        return relativeValue;
+    public Double getAbsolute() {
+        return absolute;
     }
 
-    public void setRelativeValue(double relativeValue) {
-        this.relativeValue = relativeValue;
+    public void setAbsolute(Double absolute) {
+        this.absolute = absolute;
     }
 
-    public Double getAbsoluteValue() {
-        return absoluteValue;
-    }
-
-    public void setAbsoluteValue(Double absoluteValue) {
-        this.absoluteValue = absoluteValue;
-    }
-
-    public void setAbsoluteValue(double value) {
-        this.absoluteValue = value;
+    @Override
+    public String toString() {
+        return "Measurement{" +
+                "timestamp=" + timestamp +
+                ", relative=" + relative +
+                ", absolute=" + absolute +
+                '}';
     }
 }

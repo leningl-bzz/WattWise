@@ -1,6 +1,6 @@
 package ch.bzz.backend.parser;
 
-import ch.bzz.backend.model.Messwert;
+import ch.bzz.backend.model.Measurement;
 import org.w3c.dom.*;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -14,24 +14,24 @@ public class SDATParser {
 
     public static class ParsedSDAT {
         private final String documentId;
-        private final List<Messwert> werte;
+        private final List<Measurement> values;
 
-        public ParsedSDAT(String documentId, List<Messwert> werte) {
+        public ParsedSDAT(String documentId, List<Measurement> values) {
             this.documentId = documentId;
-            this.werte = werte;
+            this.values = values;
         }
 
         public String getDocumentId() {
             return documentId;
         }
 
-        public List<Messwert> getWerte() {
-            return werte;
+        public List<Measurement> getValues() {
+            return values;
         }
     }
 
     public static ParsedSDAT parseSDATFile(File xmlFile) {
-        List<Messwert> messwerte = new ArrayList<>();
+        List<Measurement> measurements = new ArrayList<>();
         String documentId = null;
 
         try {
@@ -47,10 +47,10 @@ public class SDATParser {
             }
 
             NodeList startNodes = doc.getElementsByTagNameNS("http://www.strom.ch", "StartDateTime");
-            if (startNodes.getLength() == 0) return new ParsedSDAT(documentId, messwerte);
+            if (startNodes.getLength() == 0) return new ParsedSDAT(documentId, measurements);
             LocalDateTime startTime = LocalDateTime.parse(startNodes.item(0).getTextContent().replace("Z", ""));
 
-            int minuten = 15;
+            int minutes = 15;
             NodeList resNodes = doc.getElementsByTagNameNS("http://www.strom.ch", "Resolution");
             for (int i = 0; i < resNodes.getLength(); i++) {
                 Node n = resNodes.item(i);
@@ -58,7 +58,7 @@ public class SDATParser {
                     Element el = (Element) n;
                     NodeList resInner = el.getElementsByTagNameNS("http://www.strom.ch", "Resolution");
                     if (resInner.getLength() > 0) {
-                        minuten = Integer.parseInt(resInner.item(0).getTextContent());
+                        minutes = Integer.parseInt(resInner.item(0).getTextContent());
                         break;
                     }
                 }
@@ -68,15 +68,15 @@ public class SDATParser {
             for (int i = 0; i < obsNodes.getLength(); i++) {
                 Element obs = (Element) obsNodes.item(i);
                 String volStr = obs.getElementsByTagNameNS("http://www.strom.ch", "Volume").item(0).getTextContent();
-                double relativ = Double.parseDouble(volStr);
-                LocalDateTime ts = startTime.plusMinutes((long) i * minuten);
-                messwerte.add(new Messwert(ts, relativ, null));
+                double relative = Double.parseDouble(volStr);
+                LocalDateTime ts = startTime.plusMinutes(i * minutes);
+                measurements.add(new Measurement(ts, relative, null));
             }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        return new ParsedSDAT(documentId, messwerte);
+        return new ParsedSDAT(documentId, measurements);
     }
 }
