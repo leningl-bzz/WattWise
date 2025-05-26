@@ -12,8 +12,8 @@
 
 <section>
   <h2>Dateien hochladen</h2>
-  <input type="file" id="sdatFile" accept=".xml">
-  <input type="file" id="eslFile" accept=".xml">
+  <input type="file" id="sdatFile" accept=".txt">
+  <input type="file" id="eslFile" accept=".txt">
   <button onclick="processFiles()">Verarbeiten</button>
 </section>
 
@@ -38,30 +38,15 @@
     const eslFile = document.getElementById('eslFile').files[0];
 
     if (!sdatFile || !eslFile) {
-      alert('Bitte mindestens eine Datei auswählen.');
+      alert('Bitte beide Dateien auswählen.');
       return;
     }
 
-    const formData = new FormData();
-    if (sdatFile) formData.append("sdat", sdatFile);
-    if (eslFile) formData.append("esl", eslFile);
-
-    fetch("http://localhost:8080/api/files/upload", {
-      method: "POST",
-      body: formData
-    })
-      .then(response => {
-        if (!response.ok) throw new Error("Upload fehlgeschlagen")
-        return response.json();
-      })
-      .then(data => {
-        dataPoints = data;
+    Promise.all([readFile(sdatFile), readFile(eslFile)])
+      .then(([sdatContent, eslContent]) => {
+        dataPoints = mergeAndProcessData(sdatContent, eslContent);
         drawCharts(dataPoints);
-      })
-      .catch(error => {
-        console.error("Fehler beim Upload: ", error);
-        alert("Fehler beim Upload oder Verarbeitung")
-      })
+      });
   }
 
   function readFile(file) {

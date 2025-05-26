@@ -1,35 +1,113 @@
+/* Base styles */
 body {
   font-family: Arial, sans-serif;
-  margin: 20px;
+  margin: 0;
+  padding: 0;
   background: #f4f4f4;
+  overflow-x: hidden;
+}
 
-  h1, h2 {
-    color: #333;
-  }
+h1, h2 {
+  color: #333;
+}
 
-  section {
-    background: #fff;
-    padding: 20px;
-    margin: 20px 0;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+/* Hamburger Menu */
+.hamburger-menu {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 1000;
+  cursor: pointer;
+  background: #333;
+  padding: 10px;
+  border-radius: 5px;
+}
 
-    canvas {
-      max-width: 100%;
-    }
-  }
+.bar1, .bar2, .bar3 {
+  width: 25px;
+  height: 3px;
+  background-color: white;
+  margin: 5px 0;
+  transition: 0.4s;
+}
 
-  button {
-    margin: 5px;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 6px;
-    background-color: #333;
-    color: #fff;
-    cursor: pointer;
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  left: -250px;
+  top: 0;
+  width: 250px;
+  height: 100%;
+  background: #333;
+  transition: 0.3s;
+  z-index: 999;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+}
 
-    &:hover {
-      background-color: #555;
-    }
-  }
+.sidebar.open {
+  left: 0;
+}
+
+.sidebar-content {
+  padding: 70px 20px 20px;
+  color: white;
+}
+
+.sidebar h2 {
+  color: white;
+  margin-bottom: 20px;
+}
+
+.sidebar input[type="file"] {
+  display: block;
+  margin: 10px 0;
+  color: white;
+  background: #444;
+  padding: 8px;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.sidebar button {
+  width: 100%;
+  margin: 10px 0;
+}
+
+/* Main Content */
+.main-content {
+  transition: margin-left 0.3s;
+  padding: 20px;
+  margin-left: 0;
+}
+
+.main-content.shifted {
+  margin-left: 250px;
+}
+
+/* Sections */
+section {
+  background: #fff;
+  padding: 20px;
+  margin: 20px 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+canvas {
+  max-width: 100%;
+}
+
+/* Buttons */
+button {
+  margin: 5px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  background-color: #333;
+  color: #fff;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #555;
 }
