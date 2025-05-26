@@ -29,6 +29,18 @@ public class Measurement {
         this.absolute = absolute;
     }
 
+    public Double getRelativeValue() {
+        return getRelative();
+    }
+
+    public Double getAbsoluteValue() {
+        return getAbsolute();
+    }
+
+    public void setAbsoluteValue(double absolute) {
+        setAbsolute(absolute);
+    }
+
     @Override
     public String toString() {
         return "Measurement{" +
