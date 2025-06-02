@@ -10,12 +10,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/files")
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = {"http://localhost:4200", "http://localhost:63342"})
 public class FileUploadController {
 
     // POST /api/files/upload
@@ -51,7 +52,7 @@ public class FileUploadController {
                 // Only SDAT provided
                 result = parsedSDAT.getValues();
             } else {
-                // If only ESL or none is provided, we return bad request or handle differently
+                // If only ESL or none is provided, return bad request
                 return ResponseEntity.badRequest().body(null);
             }
 
@@ -61,7 +62,7 @@ public class FileUploadController {
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(null);
         }
 
     }
