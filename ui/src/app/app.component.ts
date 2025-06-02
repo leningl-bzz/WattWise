@@ -1,5 +1,5 @@
-import { Component, OnInit, ElementRef, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {Component, OnInit} from '@angular/core';
+import {CommonModule} from '@angular/common';
 
 @Component({
   selector: 'app-root',
@@ -25,18 +25,18 @@ export class AppComponent implements OnInit {
   }
 
   processFiles() {
-    const sdatFileInput = document.getElementById('sdatFile') as HTMLInputElement;
-    const eslFileInput = document.getElementById('eslFile') as HTMLInputElement;
+    const sdatFileInput = document.getElementById('sdatFiles') as HTMLInputElement;
+    const eslFileInput = document.getElementById('eslFiles') as HTMLInputElement;
 
-    const sdatFile = sdatFileInput.files?.[0];
-    const eslFile = eslFileInput.files?.[0];
+    const sdatFiles = sdatFileInput.files?.[0];
+    const eslFiles = eslFileInput.files?.[0];
 
-    if (!sdatFile || !eslFile) {
+    if (!sdatFiles || !eslFiles) {
       alert('Bitte beide Dateien auswählen.');
       return;
     }
 
-    Promise.all([this.readFile(sdatFile), this.readFile(eslFile)])
+    Promise.all([this.readFile(sdatFiles), this.readFile(eslFiles)])
       .then(([sdatContent, eslContent]) => {
         this.dataPoints = this.mergeAndProcessData(sdatContent, eslContent);
         this.drawCharts(this.dataPoints);
@@ -58,12 +58,12 @@ export class AppComponent implements OnInit {
 
     const sdatData = sdatLines.map(line => {
       const [timestamp, id, value] = line.split(',');
-      return { timestamp, id, value: parseFloat(value) };
+      return {timestamp, id, value: parseFloat(value)};
     }).filter(d => d.id === '735' || d.id === '742');
 
     const eslData = eslLines.map(line => {
       const [timestamp, value] = line.split(',');
-      return { timestamp, value: parseFloat(value) };
+      return {timestamp, value: parseFloat(value)};
     });
 
     const combined = sdatData.map(sdat => {
@@ -122,7 +122,7 @@ export class AppComponent implements OnInit {
       csv += `${d.timestamp},${d.id},${d.verbrauch},${d.zaehlerstand}\n`;
     });
 
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csv], {type: 'text/csv'});
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'export.csv';
@@ -131,7 +131,7 @@ export class AppComponent implements OnInit {
 
   saveJSON() {
     const json = JSON.stringify(this.dataPoints, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
+    const blob = new Blob([json], {type: 'application/json'});
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'data.json';
@@ -141,7 +141,7 @@ export class AppComponent implements OnInit {
   postJSON() {
     fetch('https://example.com/api/upload', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(this.dataPoints)
     })
       .then(response => {

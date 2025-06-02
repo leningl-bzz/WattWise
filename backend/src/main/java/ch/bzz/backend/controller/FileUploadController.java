@@ -21,42 +21,53 @@ import java.util.Map;
 @CrossOrigin(origins = {"http://localhost:4200", "http://localhost:63342"})
 public class FileUploadController {
 
-    private static final String BASE_PATH = "uploads/";
+    private static final String BASE_PATH = System.getProperty("user.dir") + "/uploads/";
 
-    // POST /api/files/upload
     @PostMapping("/upload")
-    public ResponseEntity<List<Measurement>> uploadFiles(@RequestParam(value = "sdat", required = false) MultipartFile sdatFile, @RequestParam(value = "esl", required = false) MultipartFile eslFile) {
+    public ResponseEntity<List<Measurement>> uploadFiles(
+            @RequestParam(value = "sdatFiles", required = false) List<MultipartFile> sdatFiles,
+            @RequestParam(value = "eslFiles", required = false) List<MultipartFile> eslFiles) {
+
+        System.out.println("Received upload request");
+
+        if (sdatFiles == null) {
+            System.out.println("sdatFiles is null");
+        } else {
+            System.out.println("sdatFiles size: " + sdatFiles.size());
+            for (MultipartFile f : sdatFiles) {
+                System.out.println("  - " + f.getOriginalFilename());
+            }
+        }
+
         try {
-            File savedSDAT = null;
-            File savedESL = null;
-
-            // Saving SDAT-File
-            if (sdatFile != null && !sdatFile.isEmpty()) {
-                savedSDAT = saveToFile(sdatFile, "sdat-files");
-            }
-
-            // Saving ESL-File
-            if (eslFile != null && !eslFile.isEmpty()) {
-                savedESL = saveToFile(eslFile, "esl-files");
-            }
-
             SDATParser.ParsedSDAT parsedSDAT = null;
             Map<String, Double> eslMap = null;
 
-            if (sdatFile != null && !sdatFile.isEmpty()) {
-                savedSDAT = convertMultipartToFile(sdatFile);
-                parsedSDAT = SDATParser.parseSDATFile(savedSDAT);
+            // Handle SDAT files
+            if (sdatFiles != null && !sdatFiles.isEmpty()) {
+                for (MultipartFile sdatFile : sdatFiles) {
+                    File savedFile = saveToFile(sdatFile, "sdat-files");
+                    // Just parse the first valid one
+                    if (parsedSDAT == null) {
+                        parsedSDAT = SDATParser.parseSDATFile(savedFile);
+                    }
+                }
             }
 
-            if (eslFile != null && !eslFile.isEmpty()) {
-                savedSDAT = convertMultipartToFile(eslFile);
-                eslMap = ESLParser.parseESLFile(savedESL);
+            // Handle ESL files
+            if (eslFiles != null && !eslFiles.isEmpty()) {
+                for (MultipartFile eslFile : eslFiles) {
+                    File savedFile = saveToFile(eslFile, "esl-files");
+                    // Just parse the first valid one
+                    if (eslMap == null) {
+                        eslMap = ESLParser.parseESLFile(savedFile);
+                    }
+                }
             }
 
             List<Measurement> result;
 
             if (parsedSDAT != null && eslMap != null) {
-                // Merge if both files are present
                 result = MeasurementMerger.mergeWithESL(
                         parsedSDAT.getValues(),
                         eslMap,
@@ -64,22 +75,22 @@ public class FileUploadController {
                         "1-0:2.8.0"
                 );
             } else if (parsedSDAT != null) {
-                // Only SDAT provided
                 result = parsedSDAT.getValues();
             } else {
-                // If only ESL or none is provided, return bad request
                 return ResponseEntity.badRequest().body(null);
             }
 
             return ResponseEntity.ok(result);
+
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(null);
         }
     }
 
+
     private File saveToFile(MultipartFile multipartFile, String subFolder) throws Exception {
-        Path dirPath = Paths.get(BASE_PATH + subFolder);
+        Path dirPath = Paths.get(BASE_PATH, subFolder);
         Files.createDirectories(dirPath);
 
         String filename = System.currentTimeMillis() + "_" + multipartFile.getOriginalFilename();
@@ -89,14 +100,7 @@ public class FileUploadController {
             fos.write(multipartFile.getBytes());
         }
 
+        System.out.println("Saved file to: " + filePath.toAbsolutePath()); // debug
         return filePath.toFile();
-    }
-
-    private File convertMultipartToFile(MultipartFile multipartFile) throws Exception {
-        File convFile = File.createTempFile("upload_", "_" + multipartFile.getOriginalFilename());
-        try (FileOutputStream fos = new FileOutputStream(convFile)) {
-            fos.write(multipartFile.getBytes());
-        }
-        return convFile;
     }
 }
