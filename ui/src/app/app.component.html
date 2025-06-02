@@ -1,12 +1,12 @@
 <!-- Hamburger Menu -->
-<div class="hamburger-menu" (click)="toggleSidebar()">
+<div class="hamburger-menu" (click)="toggleSidebar(); $event.stopPropagation()">
   <div class="bar1"></div>
   <div class="bar2"></div>
   <div class="bar3"></div>
 </div>
 
 <!-- Sidebar -->
-<div class="sidebar" [class.open]="sidebarOpen">
+<div class="sidebar" [class.open]="sidebarOpen" (click)="$event.stopPropagation()">
   <div class="sidebar-content">
     <h2>Dateien hochladen</h2>
     <input type="file" id="sdatFile" accept=".xml" multiple>
@@ -22,9 +22,9 @@
 </div>
 
 <!-- Main Content -->
-<main class="main-content">
+<main class="main-content" (click)="closeSidebarIfOpen($event)">
   <header class="main-header">
-    <h1>Zählerdaten-Visualisierung</h1>
+    <h1>WattWise</h1>
   </header>
 
   <section class="visualization-section">
