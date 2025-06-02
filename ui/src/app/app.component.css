@@ -75,13 +75,7 @@ h1, h2 {
 
 /* Main Content */
 .main-content {
-  transition: margin-left 0.3s;
   padding: 20px;
-  margin-left: 0;
-}
-
-.main-content.shifted {
-  margin-left: 250px;
 }
 
 /* Sections */
