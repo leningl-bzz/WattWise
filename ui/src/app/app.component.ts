@@ -12,6 +12,7 @@ export class AppComponent implements OnInit {
   title = 'ui';
   sidebarOpen = false;
   dataPoints: any[] = [];
+  activeTab = 'verbrauch'; // Default active tab
 
   ngOnInit() {
     // Load Chart.js script
@@ -22,6 +23,17 @@ export class AppComponent implements OnInit {
 
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
+  }
+
+  closeSidebarIfOpen(event: MouseEvent) {
+    // If sidebar is open, close it
+    if (this.sidebarOpen) {
+      this.sidebarOpen = false;
+    }
+  }
+
+  setActiveTab(tab: string) {
+    this.activeTab = tab;
   }
 
   processFiles() {
@@ -100,6 +112,19 @@ export class AppComponent implements OnInit {
           label: 'Verbrauch',
           data: verbrauch
         }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            ticks: {
+              autoSkip: true,
+              maxRotation: 45,
+              minRotation: 45
+            }
+          }
+        }
       }
     });
 
@@ -112,6 +137,19 @@ export class AppComponent implements OnInit {
           label: 'Zählerstand',
           data: zaehlerstand
         }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            ticks: {
+              autoSkip: true,
+              maxRotation: 45,
+              minRotation: 45
+            }
+          }
+        }
       }
     });
   }

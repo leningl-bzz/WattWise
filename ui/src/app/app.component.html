@@ -9,23 +9,44 @@
 <div class="sidebar" [class.open]="sidebarOpen">
   <div class="sidebar-content">
     <h2>Dateien hochladen</h2>
-    <input type="file" id="sdatFiles" accept=".xml" multiple>
-    <input type="file" id="eslFiles" accept=".xml" multiple>
+    <input type="file" id="sdatFile" accept=".xml" multiple>
+    <input type="file" id="eslFile" accept=".xml" multiple>
     <button (click)="processFiles()">Verarbeiten</button>
+
+    <div class="sidebar-footer">
+      <h2>Daten exportieren</h2>
+      <button (click)="exportCSV()">CSV</button>
+      <button (click)="saveJSON()">JSON speichern</button>
+    </div>
   </div>
 </div>
 
 <!-- Main Content -->
-<div class="main-content">
-  <h1>Zählerdaten-Visualisierung</h1>
+<main class="main-content" (click)="closeSidebarIfOpen($event)">
+  <header class="main-header">
+    <h1>WattWise</h1>
+  </header>
 
-  <!-- <section>
-    <h2>Dateien hochladen</h2>
-    <input type="file" id="sdatFile" accept=".xml">
-    <input type="file" id="eslFile" accept=".xml">
-    <button id="processButton">Verarbeiten</button>
-  </section> -->
+  <section class="visualization-section">
+    <nav class="tabs-nav">
+      <button class="tab-btn" [class.active]="activeTab === 'verbrauch'" (click)="setActiveTab('verbrauch')">Verbrauch</button>
+      <button class="tab-btn" [class.active]="activeTab === 'zaehlerstand'" (click)="setActiveTab('zaehlerstand')">Zählerstand</button>
+    </nav>
 
+    <div class="tab-panels">
+      <div class="tab-panel" [class.active]="activeTab === 'verbrauch'">
+        <canvas id="verbrauchChart"></canvas>
+      </div>
+      <div class="tab-panel" [class.active]="activeTab === 'zaehlerstand'">
+        <canvas id="zaehlerstandChart"></canvas>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- External Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <section>
     <h2>Diagramme</h2>
     <canvas id="verbrauchChart"></canvas>
