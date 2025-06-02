@@ -1,13 +1,23 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <title>Zählerdaten-Visualisierung</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="app.component.css">
-</head>
-<body>
+<!-- Hamburger Menu -->
+<div class="hamburger-menu" (click)="toggleSidebar()">
+  <div class="bar1"></div>
+  <div class="bar2"></div>
+  <div class="bar3"></div>
+</div>
 
+<!-- Sidebar -->
+<div class="sidebar" [class.open]="sidebarOpen">
+  <div class="sidebar-content">
+    <h2>Dateien hochladen</h2>
+    <input type="file" id="sdatFile" accept=".txt">
+    <input type="file" id="eslFile" accept=".txt">
+    <button (click)="processFiles()">Verarbeiten</button>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="main-content">
+  <h1>Zählerdaten-Visualisierung</h1>
 <h1>Zählerdaten-Visualisierung</h1>
 
 <section>
@@ -17,11 +27,11 @@
   <button id="processButton">Verarbeiten</button>
 </section>
 
-<section>
-  <h2>Diagramme</h2>
-  <canvas id="verbrauchChart"></canvas>
-  <canvas id="zaehlerstandChart"></canvas>
-</section>
+  <section>
+    <h2>Diagramme</h2>
+    <canvas id="verbrauchChart"></canvas>
+    <canvas id="zaehlerstandChart"></canvas>
+  </section>
 
 <section>
   <h2>Daten exportieren</h2>
@@ -173,5 +183,4 @@
       .catch(err => alert('Netzwerkfehler: ' + err));
   }
 </script>
-</body>
-</html>
+</div>
