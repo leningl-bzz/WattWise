@@ -12,6 +12,7 @@ export class AppComponent implements OnInit {
   title = 'ui';
   sidebarOpen = false;
   dataPoints: any[] = [];
+  activeTab = 'verbrauch'; // Default active tab
 
   ngOnInit() {
     // Load Chart.js script
@@ -22,6 +23,10 @@ export class AppComponent implements OnInit {
 
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
+  }
+
+  setActiveTab(tab: string) {
+    this.activeTab = tab;
   }
 
   processFiles() {

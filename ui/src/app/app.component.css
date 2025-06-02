@@ -51,6 +51,9 @@ h1, h2 {
 .sidebar-content {
   padding: 70px 20px 20px;
   color: white;
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - 90px);
 }
 
 .sidebar h2 {
@@ -73,6 +76,12 @@ h1, h2 {
   margin: 10px 0;
 }
 
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid #555;
+}
+
 /* Main Content */
 .main-content {
   padding: 20px;
@@ -85,6 +94,53 @@ section {
   margin: 20px 0;
   border-radius: 8px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Tabs */
+.tabs {
+  width: 100%;
+}
+
+.tab-buttons {
+  display: flex;
+  margin-bottom: 15px;
+}
+
+.tab-buttons button {
+  flex: 1;
+  margin: 0 5px;
+  padding: 10px;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  background-color: #ddd;
+  color: #333;
+  cursor: pointer;
+}
+
+.tab-buttons button:first-child {
+  margin-left: 0;
+}
+
+.tab-buttons button:last-child {
+  margin-right: 0;
+}
+
+.tab-buttons button.active {
+  background-color: #333;
+  color: #fff;
+}
+
+.tab-content {
+  border-top: 2px solid #333;
+  padding-top: 15px;
+}
+
+.tab-pane {
+  display: none;
+}
+
+.tab-pane.active {
+  display: block;
 }
 
 canvas {

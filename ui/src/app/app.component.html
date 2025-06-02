@@ -12,178 +12,38 @@
     <input type="file" id="sdatFile" accept=".xml" multiple>
     <input type="file" id="eslFile" accept=".xml" multiple>
     <button (click)="processFiles()">Verarbeiten</button>
+
+    <div class="sidebar-footer">
+      <h2>Daten exportieren</h2>
+      <button (click)="exportCSV()">CSV</button>
+      <button (click)="saveJSON()">JSON speichern</button>
+    </div>
   </div>
 </div>
 
 <!-- Main Content -->
-<div class="main-content">
-  <h1>Zählerdaten-Visualisierung</h1>
+<main class="main-content">
+  <header class="main-header">
+    <h1>Zählerdaten-Visualisierung</h1>
+  </header>
 
-<!-- <section>
-  <h2>Dateien hochladen</h2>
-  <input type="file" id="sdatFile" accept=".xml">
-  <input type="file" id="eslFile" accept=".xml">
-  <button id="processButton">Verarbeiten</button>
-</section> -->
+  <section class="visualization-section">
+    <nav class="tabs-nav">
+      <button class="tab-btn" [class.active]="activeTab === 'verbrauch'" (click)="setActiveTab('verbrauch')">Verbrauch</button>
+      <button class="tab-btn" [class.active]="activeTab === 'zaehlerstand'" (click)="setActiveTab('zaehlerstand')">Zählerstand</button>
+    </nav>
 
-  <section>
-    <h2>Diagramme</h2>
-    <canvas id="verbrauchChart"></canvas>
-    <canvas id="zaehlerstandChart"></canvas>
+    <div class="tab-panels">
+      <div class="tab-panel" [class.active]="activeTab === 'verbrauch'">
+        <canvas id="verbrauchChart"></canvas>
+      </div>
+      <div class="tab-panel" [class.active]="activeTab === 'zaehlerstand'">
+        <canvas id="zaehlerstandChart"></canvas>
+      </div>
+    </div>
   </section>
 
-<section>
-  <h2>Daten exportieren</h2>
-  <button onclick="exportCSV()">Export als CSV</button>
-  <button onclick="saveJSON()">Als JSON speichern</button>
-  <button onclick="postJSON()">Via HTTP POST senden</button>
-</section>
+</main>
 
-<script>
-  document.getElementById("processButton").addEventListener("click", processFiles);
-  let dataPoints = [];
-
-  function processFiles() {
-    const sdatFiles = document.getElementById('sdatFile').files[0];
-    const eslFiles = document.getElementById('eslFile').files[0];
-
-    if (!sdatFile || !eslFile) {
-      alert('Bitte mindestens eine Datei auswählen.');
-      return;
-    }
-
-    const formData = new FormData();
-    for (let i = 0; i < sdatFiles.length; i++) {
-      formData.append("sdatFiles", sdatFiles[i]);
-    }
-
-    for (let i = 0; i < eslFiles.length; i++) {
-      formData.append("eslFiles", eslFiles[i]);
-    }
-
-    fetch("http://localhost:8080/api/files/upload", {
-      method: "POST",
-      body: formData
-    })
-      .then(response => {
-        if (!response.ok) throw new Error("Upload fehlgeschlagen")
-        return response.json();
-      })
-      .then(data => {
-        dataPoints = data;
-        drawCharts(dataPoints);
-      })
-      .catch(error => {
-        console.error("Fehler beim Upload: ", error);
-        alert("Fehler beim Upload oder Verarbeitung")
-      })
-  }
-
-  function readFile(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = e => resolve(e.target.result);
-      reader.onerror = e => reject(e);
-      reader.readAsText(file);
-    });
-  }
-
-  function mergeAndProcessData(sdatText, eslText) {
-    const sdatLines = sdatText.split('\n').filter(line => line.trim() !== '');
-    const eslLines = eslText.split('\n').filter(line => line.trim() !== '');
-
-    const sdatData = sdatLines.map(line => {
-      const [timestamp, id, value] = line.split(',');
-      return {timestamp, id, value: parseFloat(value)};
-    }).filter(d => d.id === '735' || d.id === '742');
-
-    const eslData = eslLines.map(line => {
-      const [timestamp, value] = line.split(',');
-      return {timestamp, value: parseFloat(value)};
-    });
-
-    const combined = sdatData.map(sdat => {
-      const esl = eslData.find(e => e.timestamp === sdat.timestamp);
-      const zaehlerstand = esl ? esl.value + sdat.value : sdat.value;
-      return {
-        timestamp: sdat.timestamp,
-        id: sdat.id,
-        verbrauch: sdat.value,
-        zaehlerstand
-      };
-    });
-
-    combined.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    return combined;
-  }
-
-  function drawCharts(data) {
-    const ctx1 = document.getElementById('verbrauchChart').getContext('2d');
-    const ctx2 = document.getElementById('zaehlerstandChart').getContext('2d');
-
-    const labels = data.map(d => d.timestamp);
-    const verbrauch = data.map(d => d.verbrauch);
-    const zaehlerstand = data.map(d => d.zaehlerstand);
-
-    new Chart(ctx1, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Verbrauch',
-          data: verbrauch
-        }]
-      }
-    });
-
-    new Chart(ctx2, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Zählerstand',
-          data: zaehlerstand
-        }]
-      }
-    });
-  }
-
-  function exportCSV() {
-    let csv = 'Timestamp,ID,Verbrauch,Zählerstand\n';
-    dataPoints.forEach(d => {
-      csv += `${d.timestamp},${d.id},${d.verbrauch},${d.zaehlerstand}\n`;
-    });
-
-    const blob = new Blob([csv], {type: 'text/csv'});
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'export.csv';
-    link.click();
-  }
-
-  function saveJSON() {
-    const json = JSON.stringify(dataPoints, null, 2);
-    const blob = new Blob([json], {type: 'application/json'});
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'data.json';
-    link.click();
-  }
-
-  function postJSON() {
-    fetch('https://example.com/api/upload', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(dataPoints)
-    })
-      .then(response => {
-        if (response.ok) {
-          alert('Daten erfolgreich gesendet.');
-        } else {
-          alert('Fehler beim Senden.');
-        }
-      })
-      .catch(err => alert('Netzwerkfehler: ' + err));
-  }
-</script>
-</div>
+<!-- External Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
