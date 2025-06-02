@@ -14,7 +14,7 @@
   <h2>Dateien hochladen</h2>
   <input type="file" id="sdatFile" accept=".xml">
   <input type="file" id="eslFile" accept=".xml">
-  <button onclick="processFiles()">Verarbeiten</button>
+  <button id="processButton">Verarbeiten</button>
 </section>
 
 <section>
@@ -31,9 +31,11 @@
 </section>
 
 <script>
+  document.getElementById("processButton").addEventListener("click", processFiles);
   let dataPoints = [];
 
   function processFiles() {
+    console.log("button wurde gedrückt")
     const sdatFile = document.getElementById('sdatFile').files[0];
     const eslFile = document.getElementById('eslFile').files[0];
 
@@ -79,12 +81,12 @@
 
     const sdatData = sdatLines.map(line => {
       const [timestamp, id, value] = line.split(',');
-      return { timestamp, id, value: parseFloat(value) };
+      return {timestamp, id, value: parseFloat(value)};
     }).filter(d => d.id === '735' || d.id === '742');
 
     const eslData = eslLines.map(line => {
       const [timestamp, value] = line.split(',');
-      return { timestamp, value: parseFloat(value) };
+      return {timestamp, value: parseFloat(value)};
     });
 
     const combined = sdatData.map(sdat => {
@@ -139,7 +141,7 @@
       csv += `${d.timestamp},${d.id},${d.verbrauch},${d.zaehlerstand}\n`;
     });
 
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csv], {type: 'text/csv'});
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'export.csv';
@@ -148,7 +150,7 @@
 
   function saveJSON() {
     const json = JSON.stringify(dataPoints, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
+    const blob = new Blob([json], {type: 'application/json'});
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'data.json';
@@ -158,7 +160,7 @@
   function postJSON() {
     fetch('https://example.com/api/upload', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(dataPoints)
     })
       .then(response => {
