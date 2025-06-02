@@ -9,8 +9,8 @@
 <div class="sidebar" [class.open]="sidebarOpen">
   <div class="sidebar-content">
     <h2>Dateien hochladen</h2>
-    <input type="file" id="sdatFile" accept=".txt">
-    <input type="file" id="eslFile" accept=".txt">
+    <input type="file" id="sdatFile" accept=".xml" multiple>
+    <input type="file" id="eslFile" accept=".xml" multiple>
     <button (click)="processFiles()">Verarbeiten</button>
   </div>
 </div>
@@ -18,14 +18,13 @@
 <!-- Main Content -->
 <div class="main-content">
   <h1>Zählerdaten-Visualisierung</h1>
-<h1>Zählerdaten-Visualisierung</h1>
 
-<section>
+<!-- <section>
   <h2>Dateien hochladen</h2>
   <input type="file" id="sdatFile" accept=".xml">
   <input type="file" id="eslFile" accept=".xml">
   <button id="processButton">Verarbeiten</button>
-</section>
+</section> -->
 
   <section>
     <h2>Diagramme</h2>
@@ -45,9 +44,8 @@
   let dataPoints = [];
 
   function processFiles() {
-    console.log("button wurde gedrückt")
-    const sdatFile = document.getElementById('sdatFile').files[0];
-    const eslFile = document.getElementById('eslFile').files[0];
+    const sdatFiles = document.getElementById('sdatFile').files[0];
+    const eslFiles = document.getElementById('eslFile').files[0];
 
     if (!sdatFile || !eslFile) {
       alert('Bitte mindestens eine Datei auswählen.');
@@ -55,8 +53,13 @@
     }
 
     const formData = new FormData();
-    if (sdatFile) formData.append("sdat", sdatFile);
-    if (eslFile) formData.append("esl", eslFile);
+    for (let i = 0; i < sdatFiles.length; i++) {
+      formData.append("sdatFiles", sdatFiles[i]);
+    }
+
+    for (let i = 0; i < eslFiles.length; i++) {
+      formData.append("eslFiles", eslFiles[i]);
+    }
 
     fetch("http://localhost:8080/api/files/upload", {
       method: "POST",

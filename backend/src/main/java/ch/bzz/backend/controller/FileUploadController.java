@@ -10,7 +10,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.time.LocalDateTime;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
@@ -19,23 +21,36 @@ import java.util.Map;
 @CrossOrigin(origins = {"http://localhost:4200", "http://localhost:63342"})
 public class FileUploadController {
 
+    private static final String BASE_PATH = "uploads/";
+
     // POST /api/files/upload
     @PostMapping("/upload")
     public ResponseEntity<List<Measurement>> uploadFiles(@RequestParam(value = "sdat", required = false) MultipartFile sdatFile, @RequestParam(value = "esl", required = false) MultipartFile eslFile) {
         try {
-            File tempSDAT = null;
-            File tempESL = null;
+            File savedSDAT = null;
+            File savedESL = null;
+
+            // Saving SDAT-File
+            if (sdatFile != null && !sdatFile.isEmpty()) {
+                savedSDAT = saveToFile(sdatFile, "sdat-files");
+            }
+
+            // Saving ESL-File
+            if (eslFile != null && !eslFile.isEmpty()) {
+                savedESL = saveToFile(eslFile, "esl-files");
+            }
+
             SDATParser.ParsedSDAT parsedSDAT = null;
             Map<String, Double> eslMap = null;
 
             if (sdatFile != null && !sdatFile.isEmpty()) {
-                tempSDAT = convertMultipartToFile(sdatFile);
-                parsedSDAT = SDATParser.parseSDATFile(tempSDAT);
+                savedSDAT = convertMultipartToFile(sdatFile);
+                parsedSDAT = SDATParser.parseSDATFile(savedSDAT);
             }
 
             if (eslFile != null && !eslFile.isEmpty()) {
-                tempESL = convertMultipartToFile(eslFile);
-                eslMap = ESLParser.parseESLFile(tempESL);
+                savedSDAT = convertMultipartToFile(eslFile);
+                eslMap = ESLParser.parseESLFile(savedESL);
             }
 
             List<Measurement> result;
@@ -56,15 +71,25 @@ public class FileUploadController {
                 return ResponseEntity.badRequest().body(null);
             }
 
-            if (tempSDAT != null) tempSDAT.delete();
-            if (tempESL != null) tempESL.delete();
-
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(null);
         }
+    }
 
+    private File saveToFile(MultipartFile multipartFile, String subFolder) throws Exception {
+        Path dirPath = Paths.get(BASE_PATH + subFolder);
+        Files.createDirectories(dirPath);
+
+        String filename = System.currentTimeMillis() + "_" + multipartFile.getOriginalFilename();
+        Path filePath = dirPath.resolve(filename);
+
+        try (FileOutputStream fos = new FileOutputStream(filePath.toFile())) {
+            fos.write(multipartFile.getBytes());
+        }
+
+        return filePath.toFile();
     }
 
     private File convertMultipartToFile(MultipartFile multipartFile) throws Exception {
