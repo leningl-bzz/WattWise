@@ -15,6 +15,7 @@ export class AppComponent implements OnInit {
   activeTab = 'verbrauch';
   dataPoints: any[] = [];
   progress: number | null = null;
+
   progress = 0;
   private chartVerbrauch: any;
   private chartZaehlerstand: any;
@@ -56,6 +57,8 @@ export class AppComponent implements OnInit {
     const formData = new FormData();
     formData.append('sdatFiles', sdatFile);
     formData.append('eslFiles', eslFile);
+
+    this.progress = 0;
 
     this.progress = 0;
     this.progress = 0;
