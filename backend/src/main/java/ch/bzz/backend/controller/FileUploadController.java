@@ -4,6 +4,7 @@ import ch.bzz.backend.model.Measurement;
 import ch.bzz.backend.parser.ESLParser;
 import ch.bzz.backend.parser.MeasurementMerger;
 import ch.bzz.backend.parser.SDATParser;
+import ch.bzz.backend.util.CSVExporter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -86,6 +87,20 @@ public class FileUploadController {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(null);
         }
+    }
+
+    @PostMapping("/exportCsv")
+    public ResponseEntity<String> exportCsv(
+            @RequestParam(value = "sdatFiles", required = false) List<MultipartFile> sdatFiles,
+            @RequestParam(value = "eslFiles", required = false) List<MultipartFile> eslFiles) {
+
+        ResponseEntity<List<Measurement>> response = uploadFiles(sdatFiles, eslFiles);
+        List<Measurement> list = response.getBody();
+        if (list == null) {
+            return ResponseEntity.badRequest().body(null);
+        }
+        String csv = CSVExporter.toCSV(list);
+        return ResponseEntity.ok(csv);
     }
 
 
