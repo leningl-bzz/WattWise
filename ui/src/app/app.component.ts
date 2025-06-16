@@ -14,6 +14,7 @@ export class AppComponent implements OnInit {
   sidebarOpen = false;
   activeTab = 'verbrauch';
   dataPoints: any[] = [];
+  progress: number | null = null;
   progress = 0;
   private chartVerbrauch: any;
   private chartZaehlerstand: any;
@@ -37,7 +38,7 @@ export class AppComponent implements OnInit {
   }
 
   handleFileChange() {
-    // Added handle file change
+    this.progress = null;
   }
 
   processFiles() {
@@ -52,6 +53,11 @@ export class AppComponent implements OnInit {
       return;
     }
 
+    const formData = new FormData();
+    formData.append('sdatFiles', sdatFile);
+    formData.append('eslFiles', eslFile);
+
+    this.progress = 0;
     this.progress = 0;
     Promise.all([this.readFile(sdatFile), this.readFile(eslFile)])
       .then(([sdatContent, eslContent]) => {
@@ -74,27 +80,39 @@ export class AppComponent implements OnInit {
     });
   }
 
-  mergeAndProcessData(sdatText: string, eslText: string) {
-    const sdatLines = sdatText.split('\n').filter(line => line.trim() !== '');
-    const eslLines = eslText.split('\n').filter(line => line.trim() !== '');
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'http://localhost:8080/api/files/upload');
 
-    const sdatData = sdatLines.map(line => {
-      const [timestamp, id, value] = line.split(',');
-      return { timestamp, id, value: parseFloat(value) };
-    }).filter(d => d.id === '735' || d.id === '742');
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const percent = Math.round((e.loaded / e.total) * 70);
+        this.progress = percent;
+      }
+    };
 
-    const eslData = eslLines.map(line => {
-      const [timestamp, value] = line.split(',');
-      return { timestamp, value: parseFloat(value) };
-    });
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const body = JSON.parse(xhr.responseText);
+        this.dataPoints = body.map((d: any) => ({
+          timestamp: d.timestamp,
+          verbrauch: d.relative,
+          zaehlerstand: d.absolute
+        }));
+        this.progress = 90;
+        this.drawCharts(this.dataPoints);
+        this.progress = 100;
+      } else {
+        console.error('Upload failed', xhr.statusText);
+        this.progress = null;
+      }
+    };
 
-    const combined = sdatData.map(sdat => {
-      const esl = eslData.find(e => e.timestamp === sdat.timestamp);
-      const zaehlerstand = esl ? esl.value + sdat.value : sdat.value;
-      return { timestamp: sdat.timestamp, id: sdat.id, verbrauch: sdat.value, zaehlerstand };
-    });
+    xhr.onerror = () => {
+      console.error('Request error');
+      this.progress = null;
+    };
 
-    return combined.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    xhr.send(formData);
   }
 
   drawCharts(data: any[]) {
@@ -135,10 +153,44 @@ export class AppComponent implements OnInit {
   }
 
   exportCSV() {
-    // Add export logic
+    const sdatInput = document.getElementById('sdatFiles') as HTMLInputElement;
+    const eslInput = document.getElementById('eslFiles') as HTMLInputElement;
+
+    const sdatFile = sdatInput?.files?.[0];
+    const eslFile = eslInput?.files?.[0];
+
+    if (!sdatFile || !eslFile) {
+      alert('Bitte beide Dateien auswählen.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('sdatFiles', sdatFile);
+    formData.append('eslFiles', eslFile);
+
+    fetch('http://localhost:8080/api/files/exportCsv', {
+      method: 'POST',
+      body: formData
+    }).then(res => {
+      if (!res.ok) throw new Error('Fehler beim Export');
+      return res.text();
+    }).then(csv => {
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'export.csv';
+      link.click();
+    }).catch(err => console.error(err));
   }
 
   saveJSON() {
-    // Add saving logic
+    if (!this.dataPoints.length) {
+      return;
+    }
+    const blob = new Blob([JSON.stringify(this.dataPoints, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'data.json';
+    link.click();
   }
 }

@@ -14,6 +14,7 @@
     <label for="eslFiles">ESL-Dateien auswählen</label>
     <input type="file" id="eslFiles" (change)="handleFileChange()" accept=".xml" multiple />
     <button (click)="processFiles()">Verarbeiten</button>
+    <div class="progress" *ngIf="progress !== null">{{progress}}%</div>
     <div class="progress">{{progress}}%</div>
 
     <div class="sidebar-footer">
