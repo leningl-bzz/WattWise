@@ -195,6 +195,11 @@ h1, h2 {
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 0 0 3px rgba(79, 172, 254, 0.15);
 }
 
+.sidebar .export-btn{
+  margin-right: 22px;
+  margin-left: 22px;
+}
+
 .sidebar button {
   margin: 15px 0;
   padding: 14px 18px;
