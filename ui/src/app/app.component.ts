@@ -136,6 +136,11 @@ export class AppComponent implements OnInit {
   }
 
   saveJSON() {
-    // Add saving logic
+    const json = JSON.stringify(this.dataPoints, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'data.json';
+    link.click();
   }
 }
