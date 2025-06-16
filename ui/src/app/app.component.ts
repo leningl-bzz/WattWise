@@ -38,12 +38,19 @@ export class AppComponent implements OnInit {
     this.activeTab = tab;
   }
 
-  handleFileChange() {
-    this.progress = null;
-  }
+        const percent = Math.round((e.loaded / e.total) * 80);
+        this.progress = Math.min(80, percent);
+        console.log('Dateien erfolgreich verarbeitet');
+        setTimeout(() => (this.progress = null), 1000);
+        console.error('Upload fehlgeschlagen', xhr.statusText);
 
-  processFiles() {
-    const sdatInput = document.getElementById('sdatFiles') as HTMLInputElement;
+    try {
+      xhr.send(formData);
+    } catch (err) {
+      console.error('Fehler beim Senden', err);
+      this.progress = null;
+    }
+  async exportCSV() {
     const eslInput = document.getElementById('eslFiles') as HTMLInputElement;
 
     const sdatFile = sdatInput?.files?.[0];
@@ -58,18 +65,25 @@ export class AppComponent implements OnInit {
     formData.append('sdatFiles', sdatFile);
     formData.append('eslFiles', eslFile);
 
-    this.progress = 0;
-
-    this.progress = 0;
-
-    this.progress = 0;
-    this.progress = 0;
-    Promise.all([this.readFile(sdatFile), this.readFile(eslFile)])
-      .then(([sdatContent, eslContent]) => {
-        this.progress = 70;
-        this.dataPoints = this.mergeAndProcessData(sdatContent, eslContent);
-        this.drawCharts(this.dataPoints);
-        this.progress = 100;
+    try {
+      const res = await fetch('http://localhost:8080/api/files/exportCsv', {
+        method: 'POST',
+        body: formData
+      });
+      const csv = await res.text();
+    } catch (err) {
+      console.error('CSV Export fehlgeschlagen', err);
+    }
+      alert('Keine Daten vorhanden');
+    try {
+      const blob = new Blob([JSON.stringify(this.dataPoints, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'data.json';
+      link.click();
+    } catch (err) {
+      console.error('JSON Export fehlgeschlagen', err);
+    }
       });
   }
 
