@@ -16,6 +16,8 @@
     <button (click)="processFiles()">Verarbeiten</button>
     <div class="progress" *ngIf="progress !== null">{{progress}}%</div>
 
+    <div class="progress">{{progress}}%</div>
+
     <div class="sidebar-footer">
       <h2>Daten exportieren</h2>
       <button (click)="exportCSV()">CSV</button>
