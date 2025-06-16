@@ -52,6 +52,7 @@ export class AppComponent implements OnInit {
     Promise.all([this.readFile(sdatFile), this.readFile(eslFile)])
       .then(([sdatContent, eslContent]) => {
         this.dataPoints = this.mergeAndProcessData(sdatContent, eslContent);
+        console.log('Parsed datapoints:', this.dataPoints);
         this.drawCharts(this.dataPoints);
       });
   }
@@ -86,6 +87,9 @@ export class AppComponent implements OnInit {
     });
 
     return combined.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    console.log('Parsed sdatData:', sdatData);
+    console.log('Parsed eslData:', eslData);
+
   }
 
   drawCharts(data: any[]) {
@@ -119,7 +123,16 @@ export class AppComponent implements OnInit {
   }
 
   exportCSV() {
-    // Add export logic
+    const csv = ['Timestamp,ID,Verbrauch,Zählerstand'];
+    this.dataPoints.forEach(d => {
+      csv.push(`${d.timestamp},${d.id},${d.verbrauch},${d.zaehlerstand}`);
+    });
+
+    const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'export.csv';
+    link.click();
   }
 
   saveJSON() {
