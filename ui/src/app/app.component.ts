@@ -61,6 +61,8 @@ export class AppComponent implements OnInit {
     this.progress = 0;
 
     this.progress = 0;
+
+    this.progress = 0;
     this.progress = 0;
     Promise.all([this.readFile(sdatFile), this.readFile(eslFile)])
       .then(([sdatContent, eslContent]) => {
