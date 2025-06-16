@@ -1,21 +1,21 @@
-import { Component, OnInit, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+
+declare var Chart: any;
 
 @Component({
   selector: 'app-root',
+  standalone: true,
   imports: [CommonModule],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.css',
-  standalone: true
+  styleUrl: './app.component.css'
 })
 export class AppComponent implements OnInit {
-  title = 'ui';
   sidebarOpen = false;
+  activeTab = 'verbrauch';
   dataPoints: any[] = [];
-  activeTab = 'verbrauch'; // Default active tab
 
   ngOnInit() {
-    // Load Chart.js script
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
     document.body.appendChild(script);
@@ -26,22 +26,23 @@ export class AppComponent implements OnInit {
   }
 
   closeSidebarIfOpen(event: MouseEvent) {
-    // If sidebar is open, close it
-    if (this.sidebarOpen) {
-      this.sidebarOpen = false;
-    }
+    if (this.sidebarOpen) this.sidebarOpen = false;
   }
 
   setActiveTab(tab: string) {
     this.activeTab = tab;
   }
 
-  processFiles() {
-    const sdatFileInput = document.getElementById('sdatFile') as HTMLInputElement;
-    const eslFileInput = document.getElementById('eslFile') as HTMLInputElement;
+  handleFileChange() {
+    // Added handle file change
+  }
 
-    const sdatFile = sdatFileInput.files?.[0];
-    const eslFile = eslFileInput.files?.[0];
+  processFiles() {
+    const sdatInput = document.getElementById('sdatFiles') as HTMLInputElement;
+    const eslInput = document.getElementById('eslFiles') as HTMLInputElement;
+
+    const sdatFile = sdatInput?.files?.[0];
+    const eslFile = eslInput?.files?.[0];
 
     if (!sdatFile || !eslFile) {
       alert('Bitte beide Dateien auswählen.');
@@ -81,114 +82,47 @@ export class AppComponent implements OnInit {
     const combined = sdatData.map(sdat => {
       const esl = eslData.find(e => e.timestamp === sdat.timestamp);
       const zaehlerstand = esl ? esl.value + sdat.value : sdat.value;
-      return {
-        timestamp: sdat.timestamp,
-        id: sdat.id,
-        verbrauch: sdat.value,
-        zaehlerstand
-      };
+      return { timestamp: sdat.timestamp, id: sdat.id, verbrauch: sdat.value, zaehlerstand };
     });
 
-    combined.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-    return combined;
+    return combined.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }
 
   drawCharts(data: any[]) {
-    const ctx1 = (document.getElementById('verbrauchChart') as HTMLCanvasElement).getContext('2d');
-    const ctx2 = (document.getElementById('zaehlerstandChart') as HTMLCanvasElement).getContext('2d');
+    const ctx1 = (document.getElementById('verbrauchChart') as HTMLCanvasElement)?.getContext('2d');
+    const ctx2 = (document.getElementById('zaehlerstandChart') as HTMLCanvasElement)?.getContext('2d');
 
-    if (!ctx1 || !ctx2) return;
+    if (!ctx1 || !ctx2 || typeof Chart === 'undefined') {
+      console.warn('Chart.js is not loaded yet.');
+      return;
+    }
 
     const labels = data.map(d => d.timestamp);
     const verbrauch = data.map(d => d.verbrauch);
     const zaehlerstand = data.map(d => d.zaehlerstand);
 
-    // @ts-ignore - Chart is loaded from CDN
     new Chart(ctx1, {
       type: 'line',
       data: {
         labels,
-        datasets: [{
-          label: 'Verbrauch',
-          data: verbrauch
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            ticks: {
-              autoSkip: true,
-              maxRotation: 45,
-              minRotation: 45
-            }
-          }
-        }
+        datasets: [{ label: 'Verbrauch', data: verbrauch, borderColor: 'blue', fill: false }]
       }
     });
 
-    // @ts-ignore - Chart is loaded from CDN
     new Chart(ctx2, {
       type: 'line',
       data: {
         labels,
-        datasets: [{
-          label: 'Zählerstand',
-          data: zaehlerstand
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            ticks: {
-              autoSkip: true,
-              maxRotation: 45,
-              minRotation: 45
-            }
-          }
-        }
+        datasets: [{ label: 'Zählerstand', data: zaehlerstand, borderColor: 'green', fill: false }]
       }
     });
   }
 
   exportCSV() {
-    let csv = 'Timestamp,ID,Verbrauch,Zählerstand\n';
-    this.dataPoints.forEach(d => {
-      csv += `${d.timestamp},${d.id},${d.verbrauch},${d.zaehlerstand}\n`;
-    });
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'export.csv';
-    link.click();
+    // Add export logic
   }
 
   saveJSON() {
-    const json = JSON.stringify(this.dataPoints, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'data.json';
-    link.click();
-  }
-
-  postJSON() {
-    fetch('https://example.com/api/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(this.dataPoints)
-    })
-      .then(response => {
-        if (response.ok) {
-          alert('Daten erfolgreich gesendet.');
-        } else {
-          alert('Fehler beim Senden.');
-        }
-      })
-      .catch(err => alert('Netzwerkfehler: ' + err));
+    // Add saving logic
   }
 }

@@ -1,16 +1,16 @@
 <!-- Hamburger Menu -->
-<div class="hamburger-menu" (click)="toggleSidebar(); $event.stopPropagation()">
+<div class="hamburger-menu" (click)="toggleSidebar()">
   <div class="bar1"></div>
   <div class="bar2"></div>
   <div class="bar3"></div>
 </div>
 
 <!-- Sidebar -->
-<div class="sidebar" [class.open]="sidebarOpen" (click)="$event.stopPropagation()">
+<div class="sidebar" [class.open]="sidebarOpen">
   <div class="sidebar-content">
     <h2>Dateien hochladen</h2>
-    <input type="file" id="sdatFile" accept=".xml" multiple>
-    <input type="file" id="eslFile" accept=".xml" multiple>
+    <input type="file" id="sdatFiles" (change)="handleFileChange()" accept=".xml" multiple />
+    <input type="file" id="eslFiles" (change)="handleFileChange()" accept=".xml" multiple />
     <button (click)="processFiles()">Verarbeiten</button>
 
     <div class="sidebar-footer">
@@ -43,8 +43,4 @@
       </div>
     </div>
   </section>
-
 </main>
-
-<!-- External Library -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
