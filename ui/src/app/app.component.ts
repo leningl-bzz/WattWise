@@ -63,24 +63,29 @@ export class AppComponent implements OnInit {
 
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {
-        const percent = Math.round((e.loaded / e.total) * 80);
-        this.progress = Math.min(80, percent);
+        const percent = Math.round((e.loaded / e.total) * 50);
+        this.progress = Math.min(50, percent);
       }
     };
 
     xhr.onload = () => {
       if (xhr.status === 200) {
-        const body = JSON.parse(xhr.responseText);
-        this.dataPoints = body.map((d: any) => ({
-          timestamp: d.timestamp,
-          verbrauch: d.relative,
-          zaehlerstand: d.absolute
-        }));
-        this.progress = 90;
-        this.drawCharts(this.dataPoints);
-        this.progress = 100;
-        console.log('Dateien erfolgreich verarbeitet');
-        setTimeout(() => (this.progress = null), 1000);
+        try {
+          const body = JSON.parse(xhr.responseText);
+          this.dataPoints = body.map((d: any) => ({
+            timestamp: d.timestamp,
+            verbrauch: d.relative,
+            zaehlerstand: d.absolute
+          }));
+          this.progress = 80;
+          this.drawCharts(this.dataPoints);
+          this.progress = 100;
+          console.log('Dateien erfolgreich verarbeitet');
+          setTimeout(() => (this.progress = null), 1000);
+        } catch (err) {
+          console.error('Antwort konnte nicht verarbeitet werden', err);
+          this.progress = null;
+        }
       } else {
         console.error('Upload fehlgeschlagen', xhr.statusText);
         this.progress = null;
