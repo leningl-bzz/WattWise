@@ -15,6 +15,8 @@
     <input type="file" id="eslFiles" (change)="handleFileChange()" accept=".xml" multiple />
     <button (click)="processFiles()">Verarbeiten</button>
     <div class="progress" *ngIf="progress !== null">Fortschritt: {{progress}}%</div>
+<<<<<<< 82rhrz-codex/entwickle-backend-für-sdat-esl-verknüpfung
+=======
     <label for="sdatFiles">SDAT-Dateien auswählen</label>
     <input type="file" id="sdatFiles" (change)="handleFileChange()" accept=".xml" multiple />
     <label for="eslFiles">ESL-Dateien auswählen</label>
@@ -23,6 +25,7 @@
     <div class="progress" *ngIf="progress !== null">{{progress}}%</div>
 
     <div class="progress">{{progress}}%</div>
+>>>>>>> test
 
     <div class="sidebar-footer">
       <h2>Daten exportieren</h2>
