@@ -9,9 +9,12 @@
 <div class="sidebar" [class.open]="sidebarOpen">
   <div class="sidebar-content">
     <h2>Dateien hochladen</h2>
+    <label for="sdatFiles">SDAT-Datei(en) auswählen</label>
     <input type="file" id="sdatFiles" (change)="handleFileChange()" accept=".xml" multiple />
+    <label for="eslFiles">ESL-Datei(en) auswählen</label>
     <input type="file" id="eslFiles" (change)="handleFileChange()" accept=".xml" multiple />
     <button (click)="processFiles()">Verarbeiten</button>
+    <div class="progress" *ngIf="progress !== null">Fortschritt: {{progress}}%</div>
 
     <div class="sidebar-footer">
       <h2>Daten exportieren</h2>
