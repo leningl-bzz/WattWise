@@ -14,6 +14,9 @@ export class AppComponent implements OnInit {
   sidebarOpen = false;
   activeTab = 'verbrauch';
   dataPoints: any[] = [];
+  progress: number | null = null;
+  private chartVerbrauch: any;
+  private chartZaehlerstand: any;
 
   ngOnInit() {
     const script = document.createElement('script');
@@ -34,7 +37,7 @@ export class AppComponent implements OnInit {
   }
 
   handleFileChange() {
-    // Added handle file change
+    this.progress = null;
   }
 
   processFiles() {
@@ -49,43 +52,45 @@ export class AppComponent implements OnInit {
       return;
     }
 
-    Promise.all([this.readFile(sdatFile), this.readFile(eslFile)])
-      .then(([sdatContent, eslContent]) => {
-        this.dataPoints = this.mergeAndProcessData(sdatContent, eslContent);
+    const formData = new FormData();
+    formData.append('sdatFiles', sdatFile);
+    formData.append('eslFiles', eslFile);
+
+    this.progress = 0;
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'http://localhost:8080/api/files/upload');
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const percent = Math.round((e.loaded / e.total) * 70);
+        this.progress = percent;
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const body = JSON.parse(xhr.responseText);
+        this.dataPoints = body.map((d: any) => ({
+          timestamp: d.timestamp,
+          verbrauch: d.relative,
+          zaehlerstand: d.absolute
+        }));
+        this.progress = 90;
         this.drawCharts(this.dataPoints);
-      });
-  }
+        this.progress = 100;
+      } else {
+        console.error('Upload failed', xhr.statusText);
+        this.progress = null;
+      }
+    };
 
-  readFile(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = e => resolve(e.target?.result as string);
-      reader.onerror = e => reject(e);
-      reader.readAsText(file);
-    });
-  }
+    xhr.onerror = () => {
+      console.error('Request error');
+      this.progress = null;
+    };
 
-  mergeAndProcessData(sdatText: string, eslText: string) {
-    const sdatLines = sdatText.split('\n').filter(line => line.trim() !== '');
-    const eslLines = eslText.split('\n').filter(line => line.trim() !== '');
-
-    const sdatData = sdatLines.map(line => {
-      const [timestamp, id, value] = line.split(',');
-      return { timestamp, id, value: parseFloat(value) };
-    }).filter(d => d.id === '735' || d.id === '742');
-
-    const eslData = eslLines.map(line => {
-      const [timestamp, value] = line.split(',');
-      return { timestamp, value: parseFloat(value) };
-    });
-
-    const combined = sdatData.map(sdat => {
-      const esl = eslData.find(e => e.timestamp === sdat.timestamp);
-      const zaehlerstand = esl ? esl.value + sdat.value : sdat.value;
-      return { timestamp: sdat.timestamp, id: sdat.id, verbrauch: sdat.value, zaehlerstand };
-    });
-
-    return combined.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    xhr.send(formData);
   }
 
   drawCharts(data: any[]) {
@@ -101,7 +106,14 @@ export class AppComponent implements OnInit {
     const verbrauch = data.map(d => d.verbrauch);
     const zaehlerstand = data.map(d => d.zaehlerstand);
 
-    new Chart(ctx1, {
+    if (this.chartVerbrauch) {
+      this.chartVerbrauch.destroy();
+    }
+    if (this.chartZaehlerstand) {
+      this.chartZaehlerstand.destroy();
+    }
+
+    this.chartVerbrauch = new Chart(ctx1, {
       type: 'line',
       data: {
         labels,
@@ -109,7 +121,7 @@ export class AppComponent implements OnInit {
       }
     });
 
-    new Chart(ctx2, {
+    this.chartZaehlerstand = new Chart(ctx2, {
       type: 'line',
       data: {
         labels,
@@ -119,10 +131,44 @@ export class AppComponent implements OnInit {
   }
 
   exportCSV() {
-    // Add export logic
+    const sdatInput = document.getElementById('sdatFiles') as HTMLInputElement;
+    const eslInput = document.getElementById('eslFiles') as HTMLInputElement;
+
+    const sdatFile = sdatInput?.files?.[0];
+    const eslFile = eslInput?.files?.[0];
+
+    if (!sdatFile || !eslFile) {
+      alert('Bitte beide Dateien auswählen.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('sdatFiles', sdatFile);
+    formData.append('eslFiles', eslFile);
+
+    fetch('http://localhost:8080/api/files/exportCsv', {
+      method: 'POST',
+      body: formData
+    }).then(res => {
+      if (!res.ok) throw new Error('Fehler beim Export');
+      return res.text();
+    }).then(csv => {
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'export.csv';
+      link.click();
+    }).catch(err => console.error(err));
   }
 
   saveJSON() {
-    // Add saving logic
+    if (!this.dataPoints.length) {
+      return;
+    }
+    const blob = new Blob([JSON.stringify(this.dataPoints, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'data.json';
+    link.click();
   }
 }
