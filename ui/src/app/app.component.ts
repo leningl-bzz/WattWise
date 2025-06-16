@@ -15,6 +15,8 @@ export class AppComponent implements OnInit {
   activeTab = 'verbrauch';
   dataPoints: any[] = [];
   progress: number | null = null;
+
+  progress = 0;
   private chartVerbrauch: any;
   private chartZaehlerstand: any;
 
@@ -57,6 +59,31 @@ export class AppComponent implements OnInit {
     formData.append('eslFiles', eslFile);
 
     this.progress = 0;
+
+    this.progress = 0;
+
+    this.progress = 0;
+    this.progress = 0;
+    Promise.all([this.readFile(sdatFile), this.readFile(eslFile)])
+      .then(([sdatContent, eslContent]) => {
+        this.progress = 70;
+        this.dataPoints = this.mergeAndProcessData(sdatContent, eslContent);
+        this.drawCharts(this.dataPoints);
+        this.progress = 100;
+      });
+  }
+
+  readFile(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target?.result as string);
+      reader.onerror = e => reject(e);
+      reader.onloadend = () => {
+        this.progress += 30;
+      };
+      reader.readAsText(file);
+    });
+  }
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', 'http://localhost:8080/api/files/upload');
