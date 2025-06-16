@@ -15,6 +15,11 @@ export class AppComponent implements OnInit {
   activeTab = 'verbrauch';
   dataPoints: any[] = [];
   progress: number | null = null;
+<<<<<<< 82rhrz-codex/entwickle-backend-für-sdat-esl-verknüpfung
+=======
+
+  progress = 0;
+>>>>>>> test
   private chartVerbrauch: any;
   private chartZaehlerstand: any;
 
@@ -55,6 +60,7 @@ export class AppComponent implements OnInit {
     const formData = new FormData();
     formData.append('sdatFiles', sdatFile);
     formData.append('eslFiles', eslFile);
+<<<<<<< 82rhrz-codex/entwickle-backend-für-sdat-esl-verknüpfung
 
     this.progress = 0;
 
@@ -103,6 +109,117 @@ export class AppComponent implements OnInit {
       console.error('Fehler beim Senden', err);
       this.progress = null;
     }
+=======
+
+    this.progress = 0;
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'http://localhost:8080/api/files/upload');
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const percent = Math.round((e.loaded / e.total) * 50);
+        this.progress = Math.min(50, percent);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        try {
+          const body = JSON.parse(xhr.responseText);
+          this.dataPoints = body.map((d: any) => ({
+            timestamp: d.timestamp,
+            verbrauch: d.relative,
+            zaehlerstand: d.absolute
+          }));
+          this.progress = 80;
+          this.drawCharts(this.dataPoints);
+          this.progress = 100;
+          console.log('Dateien erfolgreich verarbeitet');
+          setTimeout(() => (this.progress = null), 1000);
+        } catch (err) {
+          console.error('Antwort konnte nicht verarbeitet werden', err);
+          this.progress = null;
+        }
+      } else {
+        console.error('Upload fehlgeschlagen', xhr.statusText);
+        this.progress = null;
+      }
+    };
+
+    xhr.onerror = () => {
+      console.error('Request error');
+      this.progress = null;
+    };
+
+    try {
+      xhr.send(formData);
+    } catch (err) {
+      console.error('Fehler beim Senden', err);
+      this.progress = null;
+    }
+
+    this.progress = 0;
+
+    this.progress = 0;
+
+    this.progress = 0;
+    this.progress = 0;
+    Promise.all([this.readFile(sdatFile), this.readFile(eslFile)])
+      .then(([sdatContent, eslContent]) => {
+        this.progress = 70;
+        this.dataPoints = this.mergeAndProcessData(sdatContent, eslContent);
+        this.drawCharts(this.dataPoints);
+        this.progress = 100;
+      });
+  }
+
+  readFile(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target?.result as string);
+      reader.onerror = e => reject(e);
+      reader.onloadend = () => {
+        this.progress += 30;
+      };
+      reader.readAsText(file);
+    });
+  }
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'http://localhost:8080/api/files/upload');
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const percent = Math.round((e.loaded / e.total) * 70);
+        this.progress = percent;
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const body = JSON.parse(xhr.responseText);
+        this.dataPoints = body.map((d: any) => ({
+          timestamp: d.timestamp,
+          verbrauch: d.relative,
+          zaehlerstand: d.absolute
+        }));
+        this.progress = 90;
+        this.drawCharts(this.dataPoints);
+        this.progress = 100;
+      } else {
+        console.error('Upload failed', xhr.statusText);
+        this.progress = null;
+      }
+    };
+
+    xhr.onerror = () => {
+      console.error('Request error');
+      this.progress = null;
+    };
+
+    xhr.send(formData);
+>>>>>>> test
   }
 
   drawCharts(data: any[]) {
@@ -143,6 +260,10 @@ export class AppComponent implements OnInit {
   }
 
   async exportCSV() {
+<<<<<<< 82rhrz-codex/entwickle-backend-für-sdat-esl-verknüpfung
+=======
+  exportCSV() {
+>>>>>>> test
     const sdatInput = document.getElementById('sdatFiles') as HTMLInputElement;
     const eslInput = document.getElementById('eslFiles') as HTMLInputElement;
 
@@ -165,6 +286,16 @@ export class AppComponent implements OnInit {
       });
       if (!res.ok) throw new Error('Fehler beim Export');
       const csv = await res.text();
+<<<<<<< 82rhrz-codex/entwickle-backend-für-sdat-esl-verknüpfung
+=======
+    fetch('http://localhost:8080/api/files/exportCsv', {
+      method: 'POST',
+      body: formData
+    }).then(res => {
+      if (!res.ok) throw new Error('Fehler beim Export');
+      return res.text();
+    }).then(csv => {
+>>>>>>> test
       const blob = new Blob([csv], { type: 'text/csv' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
@@ -173,6 +304,10 @@ export class AppComponent implements OnInit {
     } catch (err) {
       console.error('CSV Export fehlgeschlagen', err);
     }
+<<<<<<< 82rhrz-codex/entwickle-backend-für-sdat-esl-verknüpfung
+=======
+    }).catch(err => console.error(err));
+>>>>>>> test
   }
 
   saveJSON() {
@@ -189,5 +324,15 @@ export class AppComponent implements OnInit {
     } catch (err) {
       console.error('JSON Export fehlgeschlagen', err);
     }
+<<<<<<< 82rhrz-codex/entwickle-backend-für-sdat-esl-verknüpfung
+=======
+      return;
+    }
+    const blob = new Blob([JSON.stringify(this.dataPoints, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'data.json';
+    link.click();
+>>>>>>> test
   }
 }
