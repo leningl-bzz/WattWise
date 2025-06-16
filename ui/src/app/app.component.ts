@@ -14,6 +14,9 @@ export class AppComponent implements OnInit {
   sidebarOpen = false;
   activeTab = 'verbrauch';
   dataPoints: any[] = [];
+  progress = 0;
+  private chartVerbrauch: any;
+  private chartZaehlerstand: any;
 
   ngOnInit() {
     const script = document.createElement('script');
@@ -49,10 +52,13 @@ export class AppComponent implements OnInit {
       return;
     }
 
+    this.progress = 0;
     Promise.all([this.readFile(sdatFile), this.readFile(eslFile)])
       .then(([sdatContent, eslContent]) => {
+        this.progress = 70;
         this.dataPoints = this.mergeAndProcessData(sdatContent, eslContent);
         this.drawCharts(this.dataPoints);
+        this.progress = 100;
       });
   }
 
@@ -61,6 +67,9 @@ export class AppComponent implements OnInit {
       const reader = new FileReader();
       reader.onload = e => resolve(e.target?.result as string);
       reader.onerror = e => reject(e);
+      reader.onloadend = () => {
+        this.progress += 30;
+      };
       reader.readAsText(file);
     });
   }
@@ -101,7 +110,14 @@ export class AppComponent implements OnInit {
     const verbrauch = data.map(d => d.verbrauch);
     const zaehlerstand = data.map(d => d.zaehlerstand);
 
-    new Chart(ctx1, {
+    if (this.chartVerbrauch) {
+      this.chartVerbrauch.destroy();
+    }
+    if (this.chartZaehlerstand) {
+      this.chartZaehlerstand.destroy();
+    }
+
+    this.chartVerbrauch = new Chart(ctx1, {
       type: 'line',
       data: {
         labels,
@@ -109,7 +125,7 @@ export class AppComponent implements OnInit {
       }
     });
 
-    new Chart(ctx2, {
+    this.chartZaehlerstand = new Chart(ctx2, {
       type: 'line',
       data: {
         labels,

@@ -183,6 +183,13 @@ h1, h2 {
   overflow: hidden;
 }
 
+.sidebar label {
+  display: block;
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: #ffffff;
+}
+
 .sidebar input[type="file"]:hover {
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.25);
@@ -537,9 +544,15 @@ button:hover {
     min-height: 200px;
   }
 
-  canvas {
-    height: 400px !important;
-  }
+canvas {
+  height: 400px !important;
+}
+
+.progress {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: #ffffff;
+}
 }
 
 /* Keyframes Animations */
