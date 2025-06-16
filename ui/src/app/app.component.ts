@@ -60,6 +60,54 @@ export class AppComponent implements OnInit {
 
     this.progress = 0;
 
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'http://localhost:8080/api/files/upload');
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const percent = Math.round((e.loaded / e.total) * 50);
+        this.progress = Math.min(50, percent);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        try {
+          const body = JSON.parse(xhr.responseText);
+          this.dataPoints = body.map((d: any) => ({
+            timestamp: d.timestamp,
+            verbrauch: d.relative,
+            zaehlerstand: d.absolute
+          }));
+          this.progress = 80;
+          this.drawCharts(this.dataPoints);
+          this.progress = 100;
+          console.log('Dateien erfolgreich verarbeitet');
+          setTimeout(() => (this.progress = null), 1000);
+        } catch (err) {
+          console.error('Antwort konnte nicht verarbeitet werden', err);
+          this.progress = null;
+        }
+      } else {
+        console.error('Upload fehlgeschlagen', xhr.statusText);
+        this.progress = null;
+      }
+    };
+
+    xhr.onerror = () => {
+      console.error('Request error');
+      this.progress = null;
+    };
+
+    try {
+      xhr.send(formData);
+    } catch (err) {
+      console.error('Fehler beim Senden', err);
+      this.progress = null;
+    }
+
+    this.progress = 0;
+
     this.progress = 0;
 
     this.progress = 0;
@@ -157,6 +205,7 @@ export class AppComponent implements OnInit {
     });
   }
 
+  async exportCSV() {
   exportCSV() {
     const sdatInput = document.getElementById('sdatFiles') as HTMLInputElement;
     const eslInput = document.getElementById('eslFiles') as HTMLInputElement;
@@ -173,6 +222,13 @@ export class AppComponent implements OnInit {
     formData.append('sdatFiles', sdatFile);
     formData.append('eslFiles', eslFile);
 
+    try {
+      const res = await fetch('http://localhost:8080/api/files/exportCsv', {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) throw new Error('Fehler beim Export');
+      const csv = await res.text();
     fetch('http://localhost:8080/api/files/exportCsv', {
       method: 'POST',
       body: formData
@@ -185,11 +241,26 @@ export class AppComponent implements OnInit {
       link.href = URL.createObjectURL(blob);
       link.download = 'export.csv';
       link.click();
+    } catch (err) {
+      console.error('CSV Export fehlgeschlagen', err);
+    }
     }).catch(err => console.error(err));
   }
 
   saveJSON() {
     if (!this.dataPoints.length) {
+      alert('Keine Daten vorhanden');
+      return;
+    }
+    try {
+      const blob = new Blob([JSON.stringify(this.dataPoints, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'data.json';
+      link.click();
+    } catch (err) {
+      console.error('JSON Export fehlgeschlagen', err);
+    }
       return;
     }
     const blob = new Blob([JSON.stringify(this.dataPoints, null, 2)], { type: 'application/json' });
