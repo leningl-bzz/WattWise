@@ -10,11 +10,11 @@
   <div class="sidebar-content">
     <h2>Dateien hochladen</h2>
     <label for="sdatFiles">SDAT-Datei(en) auswählen</label>
-    <input type="file" id="sdatFiles" (change)="handleFileChange()" accept=".xml" multiple />
+    <input type="file" id="sdatFiles" (change)="handleFileChange()" accept=".xml" multiple/>
     <label for="eslFiles">ESL-Datei(en) auswählen</label>
-    <input type="file" id="eslFiles" (change)="handleFileChange()" accept=".xml" multiple />
+    <input type="file" id="eslFiles" (change)="handleFileChange()" accept=".xml" multiple/>
     <button (click)="processFiles()">Verarbeiten</button>
-    <div class="progress" *ngIf="progress !== null">Fortschritt: {{progress}}%</div>
+    <div class="progress" *ngIf="progress !== null">Fortschritt: {{ progress }}%</div>
 
     <div class="sidebar-footer">
       <h2>Daten exportieren</h2>
@@ -25,15 +25,18 @@
 </div>
 
 <!-- Main Content -->
-<main class="main-content" (click)="closeSidebarIfOpen($event)">
+<main class="main-content" (click)="closeSidebarIfOpen()">
   <header class="main-header">
     <h1>WattWise</h1>
   </header>
 
   <section class="visualization-section">
     <nav class="tabs-nav">
-      <button class="tab-btn" [class.active]="activeTab === 'verbrauch'" (click)="setActiveTab('verbrauch')">Verbrauch</button>
-      <button class="tab-btn" [class.active]="activeTab === 'zaehlerstand'" (click)="setActiveTab('zaehlerstand')">Zählerstand</button>
+      <button class="tab-btn" [class.active]="activeTab === 'verbrauch'" (click)="setActiveTab('verbrauch')">Verbrauch
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'zaehlerstand'" (click)="setActiveTab('zaehlerstand')">
+        Zählerstand
+      </button>
     </nav>
 
     <div class="tab-panels">

@@ -32,63 +32,56 @@ public class FileUploadController {
             @RequestParam(value = "sdatFiles", required = false) List<MultipartFile> sdatFiles,
             @RequestParam(value = "eslFiles", required = false) List<MultipartFile> eslFiles) {
 
-        log.info("Received upload request");
-
-        if (sdatFiles == null) {
-            log.info("sdatFiles is null");
-        } else {
-            log.info("sdatFiles size: {}", sdatFiles.size());
-            for (MultipartFile f : sdatFiles) {
-                log.info("  - {}", f.getOriginalFilename());
-            }
-        }
-
         try {
             SDATParser.ParsedSDAT parsedSDAT = null;
             Map<String, Double> eslMap = null;
 
-            // Handle SDAT files
             if (sdatFiles != null && !sdatFiles.isEmpty()) {
                 for (MultipartFile sdatFile : sdatFiles) {
                     File savedFile = saveToFile(sdatFile, "sdat-files");
-                    // Just parse the first valid one
                     if (parsedSDAT == null) {
                         parsedSDAT = SDATParser.parseSDATFile(savedFile);
                     }
                 }
             }
 
-            // Handle ESL files
             if (eslFiles != null && !eslFiles.isEmpty()) {
                 for (MultipartFile eslFile : eslFiles) {
                     File savedFile = saveToFile(eslFile, "esl-files");
-                    // Just parse the first valid one
                     if (eslMap == null) {
                         eslMap = ESLParser.parseESLFile(savedFile);
                     }
                 }
             }
 
-            List<Measurement> result;
+            if (parsedSDAT == null) return ResponseEntity.badRequest().build();
 
-            if (parsedSDAT != null && eslMap != null) {
-                result = MeasurementMerger.mergeWithESL(
-                        parsedSDAT.getValues(),
-                        eslMap,
-                        "1-0:1.8.0",
-                        "1-0:2.8.0"
-                );
-            } else if (parsedSDAT != null) {
-                result = parsedSDAT.getValues();
+            String docId = parsedSDAT.getDocumentId();
+            String obis1, obis2;
+
+            if (docId != null && docId.contains("ID742")) {
+                obis1 = "1-1:1.8.1";
+                obis2 = "1-1:1.8.2";
+            } else if (docId != null && docId.contains("ID735")) {
+                obis1 = "1-1:2.8.1";
+                obis2 = "1-1:2.8.2";
             } else {
-                return ResponseEntity.badRequest().body(null);
+                obis1 = "1-0:1.8.0";
+                obis2 = "1-0:2.8.0";
+            }
+
+            List<Measurement> result;
+            if (eslMap != null) {
+                result = MeasurementMerger.mergeWithESL(parsedSDAT.getValues(), eslMap, obis1, obis2);
+            } else {
+                result = parsedSDAT.getValues();
             }
 
             return ResponseEntity.ok(result);
 
         } catch (Exception e) {
             log.error("Error while processing upload", e);
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().build();
         }
     }
 
@@ -100,12 +93,11 @@ public class FileUploadController {
         ResponseEntity<List<Measurement>> response = uploadFiles(sdatFiles, eslFiles);
         List<Measurement> list = response.getBody();
         if (list == null) {
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().build();
         }
         String csv = CSVExporter.toCSV(list);
         return ResponseEntity.ok(csv);
     }
-
 
     private File saveToFile(MultipartFile multipartFile, String subFolder) throws Exception {
         Path dirPath = Paths.get(BASE_PATH, subFolder);

@@ -7,6 +7,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,36 +42,57 @@ public class SDATParser {
             Document doc = dBuilder.parse(xmlFile);
             doc.getDocumentElement().normalize();
 
-            NodeList docIdNodes = doc.getElementsByTagNameNS("http://www.strom.ch", "DocumentID");
+            // Get Document ID
+            NodeList docIdNodes = doc.getElementsByTagNameNS("*", "DocumentID");
             if (docIdNodes.getLength() > 0) {
                 documentId = docIdNodes.item(0).getTextContent().trim();
             }
+            System.out.println("Document ID: " + documentId);
 
-            NodeList startNodes = doc.getElementsByTagNameNS("http://www.strom.ch", "StartDateTime");
-            if (startNodes.getLength() == 0) return new ParsedSDAT(documentId, measurements);
-            LocalDateTime startTime = LocalDateTime.parse(startNodes.item(0).getTextContent().replace("Z", ""));
+            // Get Start Time
+            NodeList startNodes = doc.getElementsByTagNameNS("*", "StartDateTime");
+            if (startNodes.getLength() == 0) {
+                System.out.println("Kein StartDateTime gefunden.");
+                return new ParsedSDAT(documentId, measurements);
+            }
+            String startStr = startNodes.item(0).getTextContent().replace("Z", "");
+            LocalDateTime startTime = LocalDateTime.parse(startStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            System.out.println("Startzeit: " + startTime);
 
+            // Default: 15 Minuten Intervalle
             int minutes = 15;
-            NodeList resNodes = doc.getElementsByTagNameNS("http://www.strom.ch", "Resolution");
-            for (int i = 0; i < resNodes.getLength(); i++) {
-                Node n = resNodes.item(i);
-                if (n.getNodeType() == Node.ELEMENT_NODE) {
-                    Element el = (Element) n;
-                    NodeList resInner = el.getElementsByTagNameNS("http://www.strom.ch", "Resolution");
-                    if (resInner.getLength() > 0) {
-                        minutes = Integer.parseInt(resInner.item(0).getTextContent());
-                        break;
-                    }
+            NodeList resolutionNodes = doc.getElementsByTagNameNS("*", "Resolution");
+            if (resolutionNodes.getLength() > 0) {
+                try {
+                    minutes = Integer.parseInt(resolutionNodes.item(0).getTextContent());
+                } catch (NumberFormatException ignored) {
                 }
             }
+            System.out.println("Intervall: " + minutes + " Minuten");
 
-            NodeList obsNodes = doc.getElementsByTagNameNS("http://www.strom.ch", "Observation");
+            // Read Observations
+            NodeList obsNodes = doc.getElementsByTagNameNS("*", "Observation");
+            System.out.println("Anzahl Observation-Knoten: " + obsNodes.getLength());
+
             for (int i = 0; i < obsNodes.getLength(); i++) {
-                Element obs = (Element) obsNodes.item(i);
-                String volStr = obs.getElementsByTagNameNS("http://www.strom.ch", "Volume").item(0).getTextContent();
-                double relative = Double.parseDouble(volStr);
-                LocalDateTime ts = startTime.plusMinutes(i * minutes);
-                measurements.add(new Measurement(ts, relative, null));
+                Node node = obsNodes.item(i);
+                if (node.getNodeType() == Node.ELEMENT_NODE) {
+                    Element obs = (Element) node;
+                    NodeList volumeNodes = obs.getElementsByTagNameNS("*", "Volume");
+                    if (volumeNodes.getLength() > 0) {
+                        String volStr = volumeNodes.item(0).getTextContent();
+                        try {
+                            double relative = Double.parseDouble(volStr);
+                            LocalDateTime timestamp = startTime.plusMinutes(i * minutes);
+                            System.out.println("Timestamp: " + timestamp + ", relative: " + relative);
+                            measurements.add(new Measurement(timestamp, relative, null));
+                        } catch (NumberFormatException e) {
+                            System.err.println("Ungültiger Wert in Volume: " + volStr);
+                        }
+                    } else {
+                        System.out.println("Keine Volume-Tags gefunden in Observation #" + i);
+                    }
+                }
             }
 
         } catch (Exception e) {

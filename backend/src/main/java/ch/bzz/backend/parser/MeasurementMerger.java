@@ -21,4 +21,3 @@ public class MeasurementMerger {
         return result;
     }
 }
-

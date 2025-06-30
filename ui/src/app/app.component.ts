@@ -1,34 +1,27 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
-declare var Chart: any;
+import Chart, { Chart as ChartType } from 'chart.js/auto';
 
 @Component({
   selector: 'app-root',
   standalone: true,
   imports: [CommonModule],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.css'
+  styleUrl: './app.component.css',
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
+  private chartVerbrauch: Chart | null = null;
+  private chartZaehlerstand: Chart | null = null;
   sidebarOpen = false;
   activeTab = 'verbrauch';
   dataPoints: any[] = [];
   progress: number | null = 0;
-  private chartVerbrauch: any;
-  private chartZaehlerstand: any;
-
-  ngOnInit() {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-    document.body.appendChild(script);
-  }
 
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
   }
 
-  closeSidebarIfOpen(event: MouseEvent) {
+  closeSidebarIfOpen() {
     if (this.sidebarOpen) this.sidebarOpen = false;
   }
 
@@ -36,11 +29,7 @@ export class AppComponent implements OnInit {
     this.activeTab = tab;
   }
 
-  handleFileChange() {
-    this.progress = null;
-  }
-
-  processFiles() {
+  async processFiles() {
     const sdatInput = document.getElementById('sdatFiles') as HTMLInputElement;
     const eslInput = document.getElementById('eslFiles') as HTMLInputElement;
 
@@ -56,104 +45,28 @@ export class AppComponent implements OnInit {
     formData.append('sdatFiles', sdatFile);
     formData.append('eslFiles', eslFile);
 
-    this.uploadFiles(
-      formData,
-      (percent) => (this.progress = percent),
-      (data) => {
-        this.dataPoints = data.map((d: any) => ({
-          timestamp: d.timestamp,
-          verbrauch: d.relative,
-          zaehlerstand: d.absolute
-        }));
-        this.progress = 80;
-        this.drawCharts(this.dataPoints);
-        this.progress = 100;
-        console.log('Dateien erfolgreich verarbeitet');
-        setTimeout(() => (this.progress = null), 1000);
-      },
-      () => (this.progress = null)
-    );
-  }
+    try {
+      const response = await fetch('http://localhost:8080/api/files/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
-  uploadFiles(formData: FormData, onProgress: (percent: number) => void, onSuccess: (data: any[]) => void, onError: () => void) {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', 'http://localhost:8080/api/files/upload');
-
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) {
-        const percent = Math.round((e.loaded / e.total) * 100);
-        onProgress(percent);
+      if (!response.ok) {
+        throw new Error('Fehler beim Verarbeiten der Dateien');
       }
-    };
 
-    xhr.onload = () => {
-      if (xhr.status === 200) {
-        try {
-          const body = JSON.parse(xhr.responseText);
-          onSuccess(body);
-        } catch (err) {
-          console.error('Response processing error', err);
-          onError();
-        }
-      } else {
-        console.error('Upload failed', xhr.statusText);
-        onError();
-      }
-    };
+      const data = await response.json();
+      this.dataPoints = data.map((d: any) => ({
+        timestamp: d.timestamp,
+        verbrauch: d.relative,
+        zaehlerstand: d.absolute,
+      }));
 
-    xhr.onerror = () => {
-      console.error('Request error');
-      onError();
-    };
-
-    xhr.send(formData);
-  }
-
-  mergeAndProcessData(sdatContent: string, eslContent: string): any[] {
-    const sdatData = JSON.parse(sdatContent);
-    const eslData = JSON.parse(eslContent);
-    return sdatData.map((sdat: any, index: number) => ({
-      timestamp: sdat.timestamp,
-      verbrauch: eslData[index]?.verbrauch || 0,
-      zaehlerstand: sdat.zaehlerstand
-    }));
-  }
-
-  drawCharts(data: any[]) {
-    const ctx1 = (document.getElementById('verbrauchChart') as HTMLCanvasElement)?.getContext('2d');
-    const ctx2 = (document.getElementById('zaehlerstandChart') as HTMLCanvasElement)?.getContext('2d');
-
-    if (!ctx1 || !ctx2 || typeof Chart === 'undefined') {
-      console.warn('Chart.js is not loaded yet.');
-      return;
+      this.drawCharts(this.dataPoints);
+      console.log('Dateien erfolgreich verarbeitet');
+    } catch (err) {
+      console.error('Fehler beim Verarbeiten der Dateien', err);
     }
-
-    const labels = data.map(d => d.timestamp);
-    const verbrauch = data.map(d => d.verbrauch);
-    const zaehlerstand = data.map(d => d.zaehlerstand);
-
-    if (this.chartVerbrauch) {
-      this.chartVerbrauch.destroy();
-    }
-    if (this.chartZaehlerstand) {
-      this.chartZaehlerstand.destroy();
-    }
-
-    this.chartVerbrauch = new Chart(ctx1, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{ label: 'Verbrauch', data: verbrauch, borderColor: 'blue', fill: false }]
-      }
-    });
-
-    this.chartZaehlerstand = new Chart(ctx2, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{ label: 'Zählerstand', data: zaehlerstand, borderColor: 'green', fill: false }]
-      }
-    });
   }
 
   async exportCSV() {
@@ -173,35 +86,79 @@ export class AppComponent implements OnInit {
     formData.append('eslFiles', eslFile);
 
     try {
-      const res = await fetch('http://localhost:8080/api/files/exportCsv', {
+      const response = await fetch('http://localhost:8080/api/files/exportCsv', {
         method: 'POST',
-        body: formData
+        body: formData,
       });
-      if (!res.ok) throw new Error('Fehler beim Export');
-      const csv = await res.text();
+
+      if (!response.ok) {
+        throw new Error('Fehler beim Exportieren der CSV');
+      }
+
+      const csv = await response.text();
       const blob = new Blob([csv], { type: 'text/csv' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = 'export.csv';
       link.click();
     } catch (err) {
-      console.error('CSV Export fehlgeschlagen', err);
+      console.error('Fehler beim Exportieren der CSV', err);
     }
   }
 
-  saveJSON() {
-    if (!this.dataPoints.length) {
-      alert('Keine Daten vorhanden');
+  drawCharts(data: any[]) {
+    const ctx1 = (document.getElementById('verbrauchChart') as HTMLCanvasElement)?.getContext('2d');
+    const ctx2 = (document.getElementById('zaehlerstandChart') as HTMLCanvasElement)?.getContext('2d');
+
+    if (!ctx1 || !ctx2) {
+      console.warn('Canvas context not found.');
       return;
     }
-    try {
-      const blob = new Blob([JSON.stringify(this.dataPoints, null, 2)], { type: 'application/json' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'data.json';
-      link.click();
-    } catch (err) {
-      console.error('JSON Export fehlgeschlagen', err);
+
+    const labels = data.map((d) => d.timestamp);
+    const verbrauch = data.map((d) => d.verbrauch);
+    const zaehlerstand = data.map((d) => d.zaehlerstand);
+
+    // Alte Charts zerstören, falls vorhanden
+    if (this.chartVerbrauch) {
+      this.chartVerbrauch.destroy();
+      this.chartVerbrauch = null;
     }
+    if (this.chartZaehlerstand) {
+      this.chartZaehlerstand.destroy();
+      this.chartZaehlerstand = null;
+    }
+
+    // Neue Charts erstellen
+    this.chartVerbrauch = new Chart(ctx1, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{ label: 'Verbrauch', data: verbrauch, borderColor: 'blue', fill: false }],
+      },
+    });
+
+    this.chartZaehlerstand = new Chart(ctx2, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{ label: 'Zählerstand', data: zaehlerstand, borderColor: 'green', fill: false }],
+      },
+    });
+  }
+
+
+  handleFileChange() {
+    // Optional: du kannst hier z.B. den Fortschritt zurücksetzen
+    this.progress = null;
+  }
+
+  saveJSON() {
+    const json = JSON.stringify(this.dataPoints, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'data.json';
+    link.click();
   }
 }
