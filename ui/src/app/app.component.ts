@@ -1,31 +1,62 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {Component} from '@angular/core';
+import {CommonModule} from '@angular/common';
+import {HttpClient, HttpClientModule} from '@angular/common/http';
+import {Chart, registerables} from 'chart.js';
 
-declare var Chart: any;
+Chart.register(...registerables);
+
+// This type definition now perfectly matches how Spring/Jackson will serialize MeterModel.
+// MeterModel has a 'getAllMeterData()' method which returns a Collection<MeterData>.
+// Jackson serializes this collection into a JSON array under the key 'allMeterData'.
+type MeterModelResponse = {
+  allMeterData: {
+    sensorId: string;
+    // The 'measurements' property in MeterData (getAllMeasurements()) returns a Collection<Measurement>.
+    // Jackson will serialize this as 'measurements' containing Measurement objects.
+    measurements: {
+      timestamp: string;   // ISO date string (from LocalDateTime)
+      relative: number;    // From Measurement.getRelative()
+      absolute: number;    // From Measurement.getAbsolute()
+    }[];
+  }[];
+  // Other properties of MeterModel, like 'allMeters' (the map), might also be present
+  // in the JSON response if they have public getters and are not @JsonIgnored.
+  // We only need 'allMeterData' for this frontend logic.
+};
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, HttpClientModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
+  /** UI state */
   sidebarOpen = false;
   activeTab = 'verbrauch';
-  dataPoints: any[] = [];
 
-  ngOnInit() {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-    document.body.appendChild(script);
+  /** Chart data */
+  dataPoints: { timestamp: string; id: string; verbrauch: number; zaehlerstand: number }[] = [];
+
+  /** Chart.js instances */
+  verbrauchChartInstance: Chart | null = null;
+  zaehlerstandChartInstance: Chart | null = null;
+
+  // API URL as a constant
+  private readonly apiUrl = 'http://localhost:8080/api/files/upload';
+
+
+  constructor(private http: HttpClient) {
   }
+
+  /* ========== UI helpers ================================================= */
 
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
   }
 
-  closeSidebarIfOpen(event: MouseEvent) {
+  closeSidebarIfOpen() {
     if (this.sidebarOpen) this.sidebarOpen = false;
   }
 
@@ -33,114 +64,180 @@ export class AppComponent implements OnInit {
     this.activeTab = tab;
   }
 
-  handleFileChange() {
-    // Added handle file change
-  }
+  /* ========== MAIN WORKFLOW ============================================= */
 
+  /** Triggered by your “Verarbeiten/Hochladen” button */
   processFiles() {
     const sdatInput = document.getElementById('sdatFiles') as HTMLInputElement;
     const eslInput = document.getElementById('eslFiles') as HTMLInputElement;
 
-    const sdatFile = sdatInput?.files?.[0];
-    const eslFile = eslInput?.files?.[0];
-
-    if (!sdatFile || !eslFile) {
-      alert('Bitte beide Dateien auswählen.');
+    if (!sdatInput?.files?.length || !eslInput?.files?.length) {
+      alert('Bitte sowohl SDAT‑ als auch ESL‑Dateien auswählen.');
       return;
     }
 
-    Promise.all([this.readFile(sdatFile), this.readFile(eslFile)])
-      .then(([sdatContent, eslContent]) => {
-        this.dataPoints = this.mergeAndProcessData(sdatContent, eslContent);
-        console.log('Parsed datapoints:', this.dataPoints);
-        this.drawCharts(this.dataPoints);
+    /* Build FormData: multiple files per key are allowed */
+    const formData = new FormData();
+    Array.from(sdatInput.files).forEach(f => formData.append('sdatFiles', f, f.name));
+    Array.from(eslInput.files).forEach(f => formData.append('eslFiles', f, f.name));
+
+    /* POST to backend */
+    this.http.post<MeterModelResponse>(this.apiUrl, formData) // Use the constant API URL
+      .subscribe({
+        next: (resp) => {
+          console.log('Backend Response:', resp); // Log the full response for debugging
+          // Check if allMeterData exists and has data before proceeding
+          if (resp && resp.allMeterData && resp.allMeterData.length > 0) {
+            this.flattenBackendResponse(resp);
+            this.drawCharts(this.dataPoints);
+            alert('Dateien erfolgreich verarbeitet!'); // Success feedback
+          } else {
+            console.warn('Backend returned no valid meter data.');
+            alert('Verarbeitung erfolgreich, aber keine gültigen Messdaten gefunden.');
+          }
+        },
+        error: (err) => {
+          console.error('Upload/Parsing Fehler:', err);
+          // Provide more specific error messages if possible (e.g., from backend error body)
+          const errorMessage = err.error?.message || 'Upload oder Verarbeitung fehlgeschlagen (siehe Konsole).';
+          alert(errorMessage);
+        }
       });
   }
 
-  readFile(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = e => resolve(e.target?.result as string);
-      reader.onerror = e => reject(e);
-      reader.readAsText(file);
+  /** Convert backend JSON into flat array for charts & export */
+  private flattenBackendResponse(resp: MeterModelResponse) {
+    this.dataPoints = [];          // reset
+
+    /* resp.allMeterData is an array (Jackson serialises Collection) */
+    resp.allMeterData.forEach(meter => {
+      meter.measurements.forEach(meas => {
+        this.dataPoints.push({
+          timestamp: meas.timestamp,
+          id: meter.sensorId,
+          verbrauch: meas.relative,
+          zaehlerstand: meas.absolute
+        });
+      });
     });
+
+    /* sort by timestamp ascending */
+    this.dataPoints.sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    console.log('Flattened datapoints:', this.dataPoints);
   }
 
-  mergeAndProcessData(sdatText: string, eslText: string) {
-    const sdatLines = sdatText.split('\n').filter(line => line.trim() !== '');
-    const eslLines = eslText.split('\n').filter(line => line.trim() !== '');
+  /* ========== CHART RENDERING =========================================== */
 
-    const sdatData = sdatLines.map(line => {
-      const [timestamp, id, value] = line.split(',');
-      return { timestamp, id, value: parseFloat(value) };
-    }).filter(d => d.id === '735' || d.id === '742');
-
-    const eslData = eslLines.map(line => {
-      const [timestamp, value] = line.split(',');
-      return { timestamp, value: parseFloat(value) };
-    });
-
-    const combined = sdatData.map(sdat => {
-      const esl = eslData.find(e => e.timestamp === sdat.timestamp);
-      const zaehlerstand = esl ? esl.value + sdat.value : sdat.value;
-      return { timestamp: sdat.timestamp, id: sdat.id, verbrauch: sdat.value, zaehlerstand };
-    });
-
-    return combined.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-    console.log('Parsed sdatData:', sdatData);
-    console.log('Parsed eslData:', eslData);
-
-  }
-
-  drawCharts(data: any[]) {
+  private drawCharts(data: typeof this.dataPoints) {
     const ctx1 = (document.getElementById('verbrauchChart') as HTMLCanvasElement)?.getContext('2d');
     const ctx2 = (document.getElementById('zaehlerstandChart') as HTMLCanvasElement)?.getContext('2d');
 
-    if (!ctx1 || !ctx2 || typeof Chart === 'undefined') {
-      console.warn('Chart.js is not loaded yet.');
+    if (!ctx1 || !ctx2) {
+      console.warn('Canvas‑Kontexte nicht gefunden.');
       return;
     }
 
-    const labels = data.map(d => d.timestamp);
-    const verbrauch = data.map(d => d.verbrauch);
-    const zaehlerstand = data.map(d => d.zaehlerstand);
+    /* Destroy old charts (if any) */
+    this.verbrauchChartInstance?.destroy();
+    this.zaehlerstandChartInstance?.destroy();
 
-    new Chart(ctx1, {
+    const labels = data.map(d => d.timestamp);
+    const verbrauchVals = data.map(d => d.verbrauch);
+    const zaehlerVals = data.map(d => d.zaehlerstand);
+
+    this.verbrauchChartInstance = new Chart(ctx1, {
       type: 'line',
       data: {
         labels,
-        datasets: [{ label: 'Verbrauch', data: verbrauch, borderColor: 'blue', fill: false }]
+        datasets: [{label: 'Verbrauch (kWh)', data: verbrauchVals, borderColor: 'blue', fill: false}]
+      },
+      options: { // Add options for better chart display if needed
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Zeitpunkt'
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Wert (kWh)'
+            }
+          }
+        }
       }
     });
 
-    new Chart(ctx2, {
+    this.zaehlerstandChartInstance = new Chart(ctx2, {
       type: 'line',
       data: {
         labels,
-        datasets: [{ label: 'Zählerstand', data: zaehlerstand, borderColor: 'green', fill: false }]
+        datasets: [{label: 'Zählerstand (kWh)', data: zaehlerVals, borderColor: 'green', fill: false}]
+      },
+      options: { // Add options for better chart display if needed
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Zeitpunkt'
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Wert (kWh)'
+            }
+          }
+        }
       }
     });
   }
 
-  exportCSV() {
-    const csv = ['Timestamp,ID,Verbrauch,Zählerstand'];
-    this.dataPoints.forEach(d => {
-      csv.push(`${d.timestamp},${d.id},${d.verbrauch},${d.zaehlerstand}`);
-    });
+  /* ========== EXPORTS ==================================================== */
 
-    const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'export.csv';
-    link.click();
+  exportCSV() {
+    if (!this.dataPoints.length) {
+      alert('Keine Daten zum Exportieren.');
+      return;
+    }
+
+    const csvRows = ['Timestamp,ID,Verbrauch,Zählerstand'];
+    this.dataPoints.forEach(d =>
+      csvRows.push(`${d.timestamp},${d.id},${d.verbrauch},${d.zaehlerstand}`)
+    );
+
+    const blob = new Blob([csvRows.join('\n')], {type: 'text/csv;charset=utf-8'}); // Add charset
+    this.saveBlob(blob, 'export.csv');
   }
 
   saveJSON() {
-    const json = JSON.stringify(this.dataPoints, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
+    if (!this.dataPoints.length) {
+      alert('Keine Daten zum Exportieren.');
+      return;
+    }
+
+    const blob = new Blob([JSON.stringify(this.dataPoints, null, 2)], {type: 'application/json;charset=utf-8'}); // Add charset
+    this.saveBlob(blob, 'data.json');
+  }
+
+  private saveBlob(blob: Blob, filename: string) {
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = 'data.json';
+    link.download = filename;
     link.click();
+    URL.revokeObjectURL(link.href);
   }
+
+  handleFileChange() {
+    // Currently not used, but can be used to update UI with selected file names.
+  }
+
 }
