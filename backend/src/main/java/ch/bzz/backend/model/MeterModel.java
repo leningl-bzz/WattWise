@@ -1,5 +1,7 @@
 package ch.bzz.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,32 +22,19 @@ public class MeterModel {
         return allMeters.get(sensorId);
     }
 
+    // This getter (getAllMeterData) will be serialized by Jackson to "allMeterData",
+    // which matches your frontend's MeterModelResponse type.
     public Collection<MeterData> getAllMeterData() {
         return allMeters.values();
     }
 
-    // JSON/CSV Export Methoden hier
-    public String exportAllCSV() {
-        StringBuilder sb = new StringBuilder();
-        for (MeterData meter : allMeters.values()) {
-            sb.append("Sensor: ").append(meter.getSensorId()).append("\n");
-            sb.append(meter.exportCSV()).append("\n");
-        }
-        return sb.toString();
+    // Optional: If you explicitly want the map itself exposed in JSON, remove @JsonIgnore.
+    // For frontend to work, 'allMeterData' is sufficient.
+    @JsonIgnore
+    public Map<String, MeterData> getAllMetersMap() {
+        return allMeters;
     }
 
-    public String exportAllJSON() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{");
-        boolean first = true;
-        for (Map.Entry<String, MeterData> entry : allMeters.entrySet()) {
-            if (!first) sb.append(",");
-            sb.append("\"").append(entry.getKey()).append("\":");
-            sb.append(entry.getValue().exportJSON());
-            first = false;
-        }
-        sb.append("}");
-        return sb.toString();
-    }
+    // Removed exportAllCSV() and exportAllJSON() - Jackson handles JSON serialization.
+    // CSV export is typically a separate endpoint or frontend responsibility.
 }
-

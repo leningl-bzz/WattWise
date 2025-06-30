@@ -4,8 +4,8 @@ import java.time.LocalDateTime;
 
 public class Measurement {
     private LocalDateTime timestamp;
-    private Double relative;
-    private Double absolute;
+    private Double relative; // Renamed from relativeValue for consistency, but field was already 'relative'
+    private Double absolute; // Renamed from absoluteValue for consistency, but field was already 'absolute'
 
     public Measurement(LocalDateTime timestamp, Double relative, Double absolute) {
         this.timestamp = timestamp;
@@ -17,6 +17,7 @@ public class Measurement {
         return timestamp;
     }
 
+    // Keep only the primary getters for 'relative' and 'absolute'
     public Double getRelative() {
         return relative;
     }
@@ -29,17 +30,8 @@ public class Measurement {
         this.absolute = absolute;
     }
 
-    public Double getRelativeValue() {
-        return getRelative();
-    }
-
-    public Double getAbsoluteValue() {
-        return getAbsolute();
-    }
-
-    public void setAbsoluteValue(double absolute) {
-        setAbsolute(absolute);
-    }
+    // Removed redundant getRelativeValue(), getAbsoluteValue(), setAbsoluteValue()
+    // Jackson will pick up getRelative() and getAbsolute() for serialization to "relative" and "absolute"
 
     @Override
     public String toString() {

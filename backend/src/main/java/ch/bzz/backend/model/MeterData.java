@@ -1,5 +1,7 @@
 package ch.bzz.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.TreeMap;
@@ -18,48 +20,33 @@ public class MeterData {
         this.measurements.put(m.getTimestamp(), m);
     }
 
-    public Collection<Measurement> getAllMeasurements() {
+    // Use @JsonIgnore if you don't want the raw TreeMap serialized,
+    // as getAllMeasurements() will provide the list.
+    // If you want the TreeMap structure, then remove @JsonIgnore and adjust frontend.
+    // For the current frontend, getAllMeasurements() is preferred.
+    @JsonIgnore
+    public TreeMap<LocalDateTime, Measurement> getMeasurementsMap() {
+        return measurements;
+    }
+
+    public Collection<Measurement> getMeasurements() {
         return measurements.values();
     }
 
     public String getSensorId() {
         return sensorId;
     }
-    
-    public void calculateAbsoluteValues(double initialValue) {
-        double sum = initialValue;
-        for (Measurement m : measurements.values()) {
-            sum += m.getRelativeValue();
-            m.setAbsoluteValue(sum);
-        }
-    }
 
-    public String exportCSV() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Timestamp,Relative Value,Absolute Value\n");
-        for (Measurement m : measurements.values()) {
-            sb.append(m.getTimestamp()).append(",");
-            sb.append(m.getRelativeValue()).append(",");
-            sb.append(m.getAbsoluteValue() != null ? m.getAbsoluteValue() : "").append("\n");
-        }
-        return sb.toString();
-    }
+    // Removed calculateAbsoluteValues() - it's handled by MeasurementMerger now.
 
-    public String exportJSON() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("[");
-        boolean first = true;
-        for (Measurement m : measurements.values()) {
-            if (!first) sb.append(",");
-            sb.append("{");
-            sb.append("\"timestamp\":\"").append(m.getTimestamp()).append("\",");
-            sb.append("\"relativeValue\":").append(m.getRelativeValue()).append(",");
-            sb.append("\"absoluteValue\":").append(m.getAbsoluteValue() != null ? m.getAbsoluteValue() : "null");
-            sb.append("}");
-            first = false;
-        }
-        sb.append("]");
-        return sb.toString();
+    // Removed exportCSV() and exportJSON() as serialization is handled by Spring/Jackson
+    // and CSV export is typically a separate endpoint or frontend concern.
+
+    @Override
+    public String toString() {
+        return "MeterData{" +
+                "sensorId='" + sensorId + '\'' +
+                ", measurements=" + measurements.size() + " entries" +
+                '}';
     }
 }
-

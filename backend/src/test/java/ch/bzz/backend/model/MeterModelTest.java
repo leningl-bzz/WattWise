@@ -1,4 +1,4 @@
-package ch.bzz.backend.model;
+/*package ch.bzz.backend.model;
 
 import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
@@ -35,4 +35,4 @@ class MeterModelTest {
         assertTrue(json.contains("\"ID3\":"));
         assertTrue(json.contains("\"timestamp\":\"2024-01-01T00:00\""));
     }
-}
+}*/

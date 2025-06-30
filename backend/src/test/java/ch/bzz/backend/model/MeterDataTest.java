@@ -13,7 +13,7 @@ class MeterDataTest {
         MeterData meter = new MeterData("ID1");
         Measurement m1 = new Measurement(LocalDateTime.now(), 1.0, null);
         meter.addMeasurement(m1);
-        assertTrue(meter.getAllMeasurements().contains(m1));
+        assertTrue(meter.getMeasurements().contains(m1));
     }
 
     @Test
@@ -22,7 +22,7 @@ class MeterDataTest {
         meter.addMeasurement(new Measurement(LocalDateTime.of(2024,1,1,0,0), 1.0, null));
         meter.addMeasurement(new Measurement(LocalDateTime.of(2024,1,1,1,0), 2.0, null));
         meter.calculateAbsoluteValues(10.0);
-        List<Measurement> list = meter.getAllMeasurements().stream().toList();
+        List<Measurement> list = meter.getMeasurements().stream().toList();
         assertEquals(11.0, list.get(0).getAbsoluteValue());
         assertEquals(13.0, list.get(1).getAbsoluteValue());
     }
