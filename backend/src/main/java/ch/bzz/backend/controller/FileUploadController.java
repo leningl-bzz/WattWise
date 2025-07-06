@@ -1,124 +1,214 @@
 package ch.bzz.backend.controller;
 
-import ch.bzz.backend.model.Measurement;
 import ch.bzz.backend.model.MeterModel;
 import ch.bzz.backend.parser.ESLParser;
 import ch.bzz.backend.parser.MeasurementMerger;
 import ch.bzz.backend.parser.SDATParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
-import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 @RestController
 @RequestMapping("/api/files")
-@CrossOrigin(origins = {"http://localhost:4200", "http://localhost:63342"})
+@CrossOrigin(origins = "http://localhost:4200")
 public class FileUploadController {
 
     private static final Logger logger = LoggerFactory.getLogger(FileUploadController.class);
-    private static final String BASE_PATH = System.getProperty("user.dir") + "/uploads/";
+
+    private static final String UPLOAD_DIR_BASE = "uploads" + File.separator;
+    private static final String ESL_UPLOAD_DIR = UPLOAD_DIR_BASE + "esl-files" + File.separator;
+    private static final String SDAT_UPLOAD_DIR = UPLOAD_DIR_BASE + "sdat-files" + File.separator;
+
+    // Static initializer to create directories if they don't exist
+    static {
+        try {
+            Files.createDirectories(Paths.get(ESL_UPLOAD_DIR));
+            Files.createDirectories(Paths.get(SDAT_UPLOAD_DIR));
+        } catch (IOException e) {
+            logger.error("Failed to create upload directories: {}", e.getMessage());
+        }
+    }
+
+    // This method will now be used by both upload and loadExistingFiles
+    private MeterModel processFilesInternal(List<File> eslFiles, List<File> sdatFiles) throws Exception {
+        MeterModel meterModel = new MeterModel();
+        Map<String, Double> combinedEslMap = new HashMap<>();
+
+        if (eslFiles != null && !eslFiles.isEmpty()) {
+            for (File eslFile : eslFiles) {
+                logger.info("Processing existing ESL file: {}", eslFile.getName());
+                Map<String, Double> eslValues = ESLParser.parseESLFile(eslFile);
+                combinedEslMap.putAll(eslValues); // Combine all ESL values
+            }
+            logger.info("Successfully parsed {} ESL files.", eslFiles.size());
+        } else {
+            logger.warn("No ESL files provided for processing.");
+        }
+
+        if (sdatFiles != null && !sdatFiles.isEmpty()) {
+            for (File sdatFile : sdatFiles) {
+                logger.info("Processing existing SDAT file: {}", sdatFile.getName());
+                SDATParser.ParsedSDAT parsedSDAT = SDATParser.parseSDATFile(sdatFile);
+
+                String documentId = parsedSDAT.getDocumentId();
+                if (documentId == null || documentId.trim().isEmpty()) {
+                    // Assign a unique ID if missing
+                    documentId = "unknown_sensor_" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
+                    logger.warn("SDAT file {} has no DocumentID, assigning to '{}'", sdatFile.getName(), documentId);
+                }
+
+                String obis1, obis2;
+                if (documentId.contains("ID742")) {
+                    obis1 = "1-1:1.8.1";
+                    obis2 = "1-1:1.8.2";
+                } else if (documentId.contains("ID735")) {
+                    obis1 = "1-1:2.8.1";
+                    obis2 = "1-1:2.8.2";
+                } else {
+                    logger.warn("Unknown DocumentID pattern '{}' for SDAT file {}. Using fallback OBIS codes.", documentId, sdatFile.getName());
+                    obis1 = "1-0:1.8.0";
+                    obis2 = "1-0:2.8.0";
+                }
+
+                List<ch.bzz.backend.model.Measurement> mergedMeasurements = MeasurementMerger.mergeWithESL(parsedSDAT.getValues(), combinedEslMap, obis1, obis2);
+                logger.info("SDAT file '{}' resulted in {} merged measurements.", sdatFile.getName(), mergedMeasurements.size());
+
+                for (ch.bzz.backend.model.Measurement m : mergedMeasurements) {
+                    meterModel.addMeasurement(documentId, m);
+                }
+            }
+            logger.info("Successfully processed {} SDAT files.", sdatFiles.size());
+            logger.info("Total measurements in meterModel after processing SDAT file(s): {}", meterModel.getAllMeterData().stream().mapToInt(md -> md.getMeasurements().size()).sum());
+        } else {
+            logger.warn("No SDAT files provided for processing.");
+        }
+
+        return meterModel;
+    }
+
 
     @PostMapping("/upload")
-    public ResponseEntity<MeterModel> uploadFiles(
-            @RequestParam(value = "sdatFiles", required = false) List<MultipartFile> sdatFiles,
-            @RequestParam(value = "eslFiles", required = false) List<MultipartFile> eslFiles) {
+    public ResponseEntity<?> uploadFiles( // Changed return type to <?>
+                                          @RequestParam(value = "sdatFiles", required = false) List<MultipartFile> sdatFiles,
+                                          @RequestParam(value = "eslFiles", required = false) List<MultipartFile> eslFiles) {
+
+        if ((sdatFiles == null || sdatFiles.isEmpty()) && (eslFiles == null || eslFiles.isEmpty())) {
+            logger.warn("No SDAT or ESL files provided in the request.");
+            // Returning a Map<String, String> for error message
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Collections.singletonMap("message", "Es wurden keine Dateien zum Hochladen bereitgestellt."));
+        }
+
+        // Convert MultipartFile to File and save them
+        List<File> savedEslFiles = new ArrayList<>();
+        if (eslFiles != null) {
+            for (MultipartFile file : eslFiles) {
+                try {
+                    Path filePath = Paths.get(ESL_UPLOAD_DIR, System.currentTimeMillis() + "_" + file.getOriginalFilename());
+                    file.transferTo(filePath);
+                    savedEslFiles.add(filePath.toFile());
+                    logger.info("Saved ESL file to: {}", filePath);
+                } catch (IOException e) {
+                    logger.error("Failed to save ESL file {}: {}", file.getOriginalFilename(), e.getMessage());
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.singletonMap("message", "Fehler beim Speichern der ESL-Dateien."));
+                }
+            }
+        }
+
+        List<File> savedSdatFiles = new ArrayList<>();
+        if (sdatFiles != null) {
+            for (MultipartFile file : sdatFiles) {
+                try {
+                    Path filePath = Paths.get(SDAT_UPLOAD_DIR, System.currentTimeMillis() + "_" + file.getOriginalFilename());
+                    file.transferTo(filePath);
+                    savedSdatFiles.add(filePath.toFile());
+                    logger.info("Saved SDAT file to: {}", filePath);
+                } catch (IOException e) {
+                    logger.error("Failed to save SDAT file {}: {}", file.getOriginalFilename(), e.getMessage());
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.singletonMap("message", "Fehler beim Speichern der SDAT-Dateien."));
+                }
+            }
+        }
 
         try {
-            if ((sdatFiles == null || sdatFiles.isEmpty()) && (eslFiles == null || eslFiles.isEmpty())) {
-                logger.warn("No SDAT or ESL files provided.");
-                return ResponseEntity.badRequest().body(null); // Or a specific error message object
-            }
-
-            // Parse ESL files first and merge into a combined map
-            Map<String, Double> combinedEslMap = new java.util.HashMap<>();
-            if (eslFiles != null) {
-                for (MultipartFile eslFile : eslFiles) {
-                    File savedFile = saveToFile(eslFile, "esl-files");
-                    Map<String, Double> parsedEsl = ESLParser.parseESLFile(savedFile);
-                    combinedEslMap.putAll(parsedEsl);
-                }
-                logger.info("Successfully parsed {} ESL files.", eslFiles.size());
-            }
-
-            MeterModel meterModel = new MeterModel();
-
-            if (sdatFiles != null) {
-                for (MultipartFile sdatFile : sdatFiles) {
-                    File savedFile = saveToFile(sdatFile, "sdat-files");
-                    SDATParser.ParsedSDAT parsedSDAT = SDATParser.parseSDATFile(savedFile);
-                    logger.info("SDAT file '{}' parsed with {} raw measurements.", sdatFile.getOriginalFilename(), parsedSDAT.getValues().size());
-
-                    String documentId = parsedSDAT.getDocumentId();
-                    if (documentId == null || documentId.trim().isEmpty()) {
-                        documentId = "unknown_sensor"; // Provide a fallback ID
-                        logger.warn("SDAT file {} has no DocumentID, assigning to '{}'", sdatFile.getOriginalFilename(), documentId);
-                    }
-
-                    // Determine OBIS keys based on DocumentID pattern
-                    String obis1, obis2;
-                    if (documentId.contains("ID742")) {
-                        obis1 = "1-1:1.8.1";
-                        obis2 = "1-1:1.8.2";
-                    } else if (documentId.contains("ID735")) {
-                        obis1 = "1-1:2.8.1";
-                        obis2 = "1-1:2.8.2";
-                    } else {
-                        // Fallback OBIS codes or error if unexpected ID
-                        logger.warn("Unknown DocumentID pattern '{}' for SDAT file {}. Using fallback OBIS codes.", documentId, sdatFile.getOriginalFilename());
-                        obis1 = "1-0:1.8.0"; // fallback example, adjust as per your data
-                        obis2 = "1-0:2.8.0"; // fallback example, adjust as per your data
-                    }
-
-                    List<Measurement> mergedMeasurements = MeasurementMerger.mergeWithESL(parsedSDAT.getValues(), combinedEslMap, obis1, obis2);
-                    logger.info("SDAT file '{}' resulted in {} merged measurements.", sdatFile.getOriginalFilename(), mergedMeasurements.size());
-
-                    // CORRECTED LOGIC: Add merged measurements directly to MeterModel,
-                    // which handles adding to the correct MeterData object or creating a new one.
-                    for (Measurement m : mergedMeasurements) {
-                        meterModel.addMeasurement(documentId, m);
-                    }
-                    logger.info("Total measurements in meterModel after processing SDAT file(s): {}", meterModel.getAllMeterData().stream().mapToInt(md -> md.getMeasurements().size()).sum());
-                }
-                logger.info("Successfully processed {} SDAT files.", sdatFiles.size());
-            }
+            MeterModel meterModel = processFilesInternal(savedEslFiles, savedSdatFiles);
 
             if (meterModel.getAllMeterData().isEmpty()) {
-                return ResponseEntity.badRequest().body(null); // Or a specific error message object
+                logger.warn("No meter data was processed from the provided files. Check file content.");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Collections.singletonMap("message", "Es konnten keine gültigen Messdaten aus den bereitgestellten Dateien extrahiert werden."));
             }
 
-            // Spring/Jackson will automatically serialize the MeterModel object
-            // into the JSON structure expected by the frontend's MeterModelResponse.
             return ResponseEntity.ok(meterModel);
 
         } catch (Exception e) {
             logger.error("Error during file upload or processing: {}", e.getMessage(), e);
-            // Return a more informative error message to the frontend
-            return ResponseEntity.internalServerError().body(null); // Or a specific error message object
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.singletonMap("message", "Ein unerwarteter Fehler ist bei der Dateiverarbeitung aufgetreten."));
         }
     }
 
-    private File saveToFile(MultipartFile multipartFile, String subFolder) throws Exception {
-        Path dirPath = Paths.get(BASE_PATH, subFolder);
-        Files.createDirectories(dirPath);
 
-        String filename = System.currentTimeMillis() + "_" + multipartFile.getOriginalFilename();
-        Path filePath = dirPath.resolve(filename);
+    @GetMapping("/load-existing")
+    public ResponseEntity<?> loadExistingFiles() { // Changed return type to <?>
+        logger.info("Attempting to load existing files from upload directories.");
+        List<File> existingEslFiles = new ArrayList<>();
+        List<File> existingSdatFiles = new ArrayList<>();
 
-        try (FileOutputStream fos = new FileOutputStream(filePath.toFile())) {
-            fos.write(multipartFile.getBytes());
+        try (Stream<Path> paths = Files.walk(Paths.get(ESL_UPLOAD_DIR))) {
+            existingEslFiles = paths
+                    .filter(Files::isRegularFile)
+                    .map(Path::toFile)
+                    .collect(Collectors.toList());
+            logger.info("Found {} existing ESL files.", existingEslFiles.size());
+        } catch (IOException e) {
+            logger.error("Error scanning ESL upload directory: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.singletonMap("message", "Fehler beim Laden der bestehenden ESL-Dateien."));
         }
 
-        logger.info("Saved file to: {}", filePath.toAbsolutePath());
-        return filePath.toFile();
+        try (Stream<Path> paths = Files.walk(Paths.get(SDAT_UPLOAD_DIR))) {
+            existingSdatFiles = paths
+                    .filter(Files::isRegularFile)
+                    .map(Path::toFile)
+                    .collect(Collectors.toList());
+            logger.info("Found {} existing SDAT files.", existingSdatFiles.size());
+        } catch (IOException e) {
+            logger.error("Error scanning SDAT upload directory: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.singletonMap("message", "Fehler beim Laden der bestehenden SDAT-Dateien."));
+        }
+
+        try {
+            MeterModel meterModel = processFilesInternal(existingEslFiles, existingSdatFiles);
+
+            if (meterModel.getAllMeterData().isEmpty()) {
+                logger.warn("No meter data found in existing files.");
+                // Return an empty MeterModel or a success message if no files are found.
+                // It's not an error condition if the directory is empty.
+                return ResponseEntity.ok(meterModel);
+            }
+
+            logger.info("Successfully loaded and processed existing files. Total measurements: {}",
+                    meterModel.getAllMeterData().stream().mapToInt(md -> md.getMeasurements().size()).sum());
+            return ResponseEntity.ok(meterModel);
+
+        } catch (Exception e) {
+            logger.error("Error processing existing files: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.singletonMap("message", "Ein unerwarteter Fehler ist bei der Verarbeitung bestehender Dateien aufgetreten."));
+        }
     }
 }

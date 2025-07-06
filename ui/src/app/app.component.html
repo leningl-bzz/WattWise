@@ -1,34 +1,40 @@
-<!-- Hamburger Menu -->
 <div class="hamburger-menu" (click)="toggleSidebar()">
   <div class="bar1"></div>
   <div class="bar2"></div>
   <div class="bar3"></div>
 </div>
 
-<!-- Sidebar -->
 <div class="sidebar" [class.open]="sidebarOpen">
   <div class="sidebar-content">
     <h2>Dateien hochladen</h2>
-    <input type="file" id="sdatFiles" (change)="handleFileChange()" accept=".xml" multiple/>
-    <input type="file" id="eslFiles" (change)="handleFileChange()" accept=".xml" multiple/>
+    <label>SDAT-Files:</label>
+    <input type="file" id="sdatFiles" accept=".xml" multiple/>
+    <label>ESL-Files:</label>
+    <input type="file" id="eslFiles" accept=".xml" multiple/>
     <button (click)="processFiles()">Verarbeiten</button>
 
     <div class="sidebar-footer">
       <h2>Daten exportieren</h2>
       <button class="export-btn" (click)="exportCSV()">CSV</button>
-
       <button class="export-btn" (click)="saveJSON()">JSON</button>
     </div>
   </div>
 </div>
 
-<!-- Main Content -->
 <main class="main-content" (click)="closeSidebarIfOpen()">
   <header class="main-header">
     <h1>WattWise</h1>
   </header>
 
   <section class="visualization-section">
+    <div class="date-range-inputs">
+      <h3 class="filtered-date-display">Zeitraum: {{ displayedDateRange }}</h3>
+      <label for="startDate">Von:</label>
+      <input type="date" id="startDate" [(ngModel)]="customStartDateString" (change)="onCustomDateChange()">
+
+      <label for="endDate">Bis:</label>
+      <input type="date" id="endDate" [(ngModel)]="customEndDateString" (change)="onCustomDateChange()">
+    </div>
     <nav class="tabs-nav">
       <button class="tab-btn" [class.active]="activeTab === 'verbrauch'" (click)="setActiveTab('verbrauch')">Verbrauch
       </button>

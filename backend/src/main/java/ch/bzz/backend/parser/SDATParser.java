@@ -69,7 +69,6 @@ public class SDATParser {
                     if (node.getParentNode() != null && node.getParentNode().getNodeName().equals("rsm:Interval")) {
                         try {
                             intervalStart = LocalDateTime.parse(node.getTextContent().trim(), DATE_TIME_FORMATTER);
-                            logger.info("SDATParser: Found Interval StartDateTime: {}", intervalStart); // <<< ADD THIS LOG
                             break; // Take the first one found within an Interval
                         } catch (DateTimeParseException e) {
                             logger.warn("SDATParser: Could not parse Interval StartDateTime: {}", node.getTextContent(), e);
@@ -90,7 +89,6 @@ public class SDATParser {
                 if (resSubNodes.getLength() > 0) {
                     try {
                         resolutionMinutes = Integer.parseInt(resSubNodes.item(0).getTextContent().trim());
-                        logger.info("SDATParser: Found Resolution: {} minutes.", resolutionMinutes); // <<< ADD THIS LOG
                     } catch (NumberFormatException e) {
                         logger.warn("SDATParser: Could not parse Resolution value. Defaulting to 15 minutes.", e);
                     }
@@ -109,7 +107,6 @@ public class SDATParser {
                     if (volumeNodes.getLength() > 0) {
                         try {
                             relativeVolume = Double.parseDouble(volumeNodes.item(0).getTextContent().trim());
-                            logger.info("  Observation {}: Volume = {}", i + 1, relativeVolume); // <<< ADD THIS LOG
                         } catch (NumberFormatException e) {
                             logger.warn("SDATParser: Could not parse Volume for observation {}: {}", i + 1, volumeNodes.item(0).getTextContent(), e);
                         }
@@ -132,14 +129,11 @@ public class SDATParser {
                     }
 
                     LocalDateTime currentTimestamp = intervalStart.plusMinutes((long) (sequence - 1) * resolutionMinutes);
-                    logger.info("  Observation {}: Calculated Timestamp = {}", i + 1, currentTimestamp); // <<< ADD THIS LOG
 
 
                     measurements.add(new Measurement(currentTimestamp, relativeVolume, null)); // absolute will be calculated by merger
                 }
             }
-
-            logger.info("SDATParser: Parsed {} measurements from file.", measurements.size()); // <<< ADD THIS LOG
             return new ParsedSDAT(documentId, measurements);
 
         } catch (ParserConfigurationException | SAXException | IOException e) {
