@@ -20,6 +20,6 @@ class MeasurementMergerTest {
         Map<String, Double> eslMap = new HashMap<>();
         List<Measurement> merged = MeasurementMerger.mergeWithESL(sdat, eslMap, "X", "Y");
         assertEquals(1, merged.size());
-        assertEquals(1.0, merged.get(0).getAbsoluteValue());
+        assertEquals(1.0, merged.get(0).getAbsolute());
     }
 }

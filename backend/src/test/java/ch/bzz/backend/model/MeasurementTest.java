@@ -26,10 +26,10 @@ class MeasurementTest {
     @Test
     void testRelativeAndAbsoluteValueMethods() {
         Measurement m = new Measurement(LocalDateTime.now(), 3.0, 7.0);
-        assertEquals(3.0, m.getRelativeValue());
-        assertEquals(7.0, m.getAbsoluteValue());
-        m.setAbsoluteValue(9.0);
-        assertEquals(9.0, m.getAbsoluteValue());
+        assertEquals(3.0, m.getRelative());
+        assertEquals(7.0, m.getAbsolute());
+        m.setAbsolute(9.0);
+        assertEquals(9.0, m.getAbsolute());
     }
 
     @Test
