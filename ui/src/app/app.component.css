@@ -24,9 +24,14 @@ body::before {
   z-index: -1;
 }
 
-h1, h2 {
+h1, h2, h3, label {
   text-align: center;
   color: #2a3a4a;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+h3 {
+  text-align: left;
 }
 
 /* Hamburger Menu */
